@@ -15,4 +15,6 @@
  */
 #define SYS_CONFIG_ACTIVE 1
 
+#define DELAY_ARDUINO_STYLE_ENABLE 1 /**< Kích hoạt các hàm Delay theo phong cách Arduino (delay, delayMicroseconds) */
+
 #endif
