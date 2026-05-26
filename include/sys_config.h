@@ -17,6 +17,9 @@
 
 #define DELAY_ARDUINO_STYLE_ENABLE 1 /**< Kích hoạt các hàm Delay theo phong cách Arduino (delay, delayMicroseconds) */
 
+/** @brief Bật (1) hoặc Tắt (0) thư viện quản lý thời gian hệ thống (micros, millis) */
+#define TIMER_ARDUINO_STYLE_ENABLE       1
+
 #define IR_ENABLE                       1
 #define IR_SUPPORT_NEC                  1
 #define IR_SUPPORT_SONY                 1
