@@ -24,6 +24,7 @@
 #define IR_SUPPORT_NEC                  1
 #define IR_SUPPORT_SONY                 1
 #define IR_SUPPORT_SAMSUNG              1
+#define IR_RAW_BUFFER_SIZE  150 // Đảm bảo bắt trọn gói tin của TCL
 
 #define POWER_ENABLE 1
 

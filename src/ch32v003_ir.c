@@ -54,9 +54,9 @@
  * @brief Kiểm tra một giá trị có nằm trong khoảng [min, max] hay không.
  * @note Sử dụng static inline để trình biên dịch tự chèn code trực tiếp, tối ưu dung lượng.
  */
-static inline uint8_t isBetween(const uint32_t value, const uint32_t min, const uint32_t max)
+inline uint8_t isBetween(const uint32_t value, const uint32_t min, const uint32_t max)
 {
-    return (value >= min && value <= max);
+    return value >= min && value <= max;
 }
 
 /**
@@ -130,6 +130,59 @@ static void space(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const uint32_t t
 // ============================================================================
 // TRIỂN KHAI HÀM ĐỌC GIẢI MÃ (IR_READ)
 // ============================================================================
+uint8_t irReadPortRaw(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_RawData_t* rawData)
+{
+    // Nếu chân đang ở mức HIGH (không có tín hiệu), thoát luôn
+    if (digitalReadPort(GPIOx, pinNumber) == HIGH)
+    {
+        return 0;
+    }
+
+    const uint32_t maxTimeoutTicks = IR_TIMEOUT_US * (FUNCONF_SYSTEM_CORE_CLOCK / 1000000);
+    uint32_t lastTick = ticks();
+    uint8_t index = 0;
+    uint8_t lastState = LOW; // Trạng thái ban đầu khi bắt đầu nhận xung
+
+    rawData->rawLen = 0;
+
+    // Vòng lặp quét dynamic liên tục với tốc độ cao nhất của CH32V003
+    while (index < IR_RAW_BUFFER_SIZE)
+    {
+        const uint8_t currentState = digitalReadPort(GPIOx, pinNumber);
+        const uint32_t currentTick = ticks();
+
+        // Nếu trạng thái chân GPIO thay đổi (Từ LOW -> HIGH hoặc HIGH -> LOW)
+        if (currentState != lastState)
+        {
+            // Tính khoảng thời gian xung vừa duy trì (Đổi từ Ticks sang us)
+            const uint32_t durationUs = (currentTick - lastTick) / (FUNCONF_SYSTEM_CORE_CLOCK / 1000000);
+
+            rawData->rawBuf[index++] = (uint16_t)durationUs;
+            lastState = currentState;
+            lastTick = currentTick; // Cập nhật lại mốc thời gian cho xung kế tiếp
+        }
+
+        // Bẫy chặn chống treo chip: Nếu giữ nguyên một trạng thái quá lâu (Hết khung dữ liệu)
+        if ((currentTick - lastTick) > maxTimeoutTicks)
+        {
+            // Nếu đang ở trạng thái HIGH (khoảng lặng kết thúc gói tin), kết thúc thành công
+            if (lastState == HIGH && index > 20)
+            {
+                rawData->rawLen = index;
+                return 1;
+            }
+            break; // Quá thời gian chờ mà vẫn LOW hoặc xung quá ngắn -> Hủy
+        }
+    }
+
+    if (index > 20)
+    {
+        rawData->rawLen = index;
+        return 1;
+    }
+    return 0;
+}
+
 uint8_t irReadPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_Data_t* irData)
 {
     if (digitalReadPort(GPIOx, pinNumber) == HIGH)
@@ -224,6 +277,26 @@ uint8_t irReadPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_Data_t
 // ============================================================================
 // TRIỂN KHAI HÀM PHÁT TÍN HIỆU (IR_SEND)
 // ============================================================================
+void irSendPortRaw(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const IR_RawData_t* rawData)
+{
+    for (uint8_t i = 0; i < rawData->rawLen; i++)
+    {
+        if (i % 2 == 0)
+        {
+            // Phần tử chẵn: Thời gian chân mắt phát hồng ngoại cần nháy 38kHz (Mark)
+            mark38kHz(GPIOx, pinNumber, rawData->rawBuf[i]);
+        }
+        else
+        {
+            // Phần tử lẻ: Khoảng lặng (Space)
+            space(GPIOx, pinNumber, rawData->rawBuf[i]);
+        }
+    }
+
+    // Đảm bảo tắt hẳn LED IR sau khi phát xong dữ liệu
+    digitalWritePort(GPIOx, pinNumber, LOW);
+}
+
 void irSendPort(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const IR_Protocol_t protocol, const uint16_t address,
                 const uint32_t command)
 {

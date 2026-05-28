@@ -36,9 +36,24 @@ typedef struct
     uint8_t bits; /**< Số lượng bit của gói tin */
 } IR_Data_t;
 
+typedef struct
+{
+    uint16_t rawBuf[IR_RAW_BUFFER_SIZE];
+    uint8_t rawLen;
+} IR_RawData_t;
+
+
 // ============================================================================
 // CÁC HÀM CHỨC NĂNG CHÍNH (THU VÀ PHÁT)
 // ============================================================================
+
+/**
+ * @brief Đọc dữ liệu xung thô từ tín hiệu hồng ngoại mà không giải mã, lưu vào buffer để phân tích sau (Hàm chặn).
+ * @param mcu_pin Số hiệu chân vật lý cấu hình từ user_config.h (Ví dụ: MCU_PIN1).
+ * @param irRawData Con trỏ tới cấu trúc lưu trữ kết quả thô của tín hiệu, bao gồm mảng độ rộng xung và số lượng xung đã lưu.
+ * @return 1 nếu đã thu thập được dữ liệu thô thành công, 0 nếu không có tín hiệu hoặc buffer đầy.
+ */
+#define irReadRaw(mcu_pin, irRawData)               irReadPortRaw(mcu_pin, irRawData)
 
 /** 
  * @brief Đọc và giải mã hồng ngoại trực tiếp từ chân vật lý MCU (Ví dụ: IR_LEARN_PIN).
@@ -47,6 +62,13 @@ typedef struct
  * @return 1 nếu nhận dạng và giải mã thành công, 0 nếu không có tín hiệu hoặc nhiễu.
  */
 #define irRead(mcu_pin, irData)                   irReadPort(mcu_pin, irData)
+
+/**
+ * @brief Phát tín hiệu hồng ngoại theo cấu trúc xung thô đã thu thập được, không cần giải mã (Hàm chặn).
+ * @param mcu_pin Số hiệu chân vật lý kết nối mạch đệm LED phát (Ví dụ: MCU_PIN2).
+ * @param irRawData Con trỏ tới cấu trúc chứa dữ liệu xung thô đã thu thập được từ hàm irReadPortRaw.
+ */
+#define irSendRaw(mcu_pin, irRawData)               irSendPortRaw(mcu_pin, irRawData)
 
 /** 
  * @brief Phát tín hiệu hồng ngoại điều khiển thiết bị từ chân vật lý MCU.
@@ -67,6 +89,15 @@ typedef struct
 uint8_t irReadPort(const GPIO_TypeDef* GPIOx, uint8_t pinNumber, IR_Data_t* irData);
 
 /**
+ * @brief Quét và lưu trữ dữ liệu xung thô từ tín hiệu hồng ngoại vào buffer, không giải mã (Hàm chặn).
+ * @param GPIOx Con trỏ quản lý vùng nhớ Port (GPIOA, GPIOC, GPIOD).
+ * @param pinNumber Số thứ tự bit của chân trong Port (Giá trị từ 0 đến 7).
+ * @param rawData Con trỏ tới cấu trúc lưu kết quả thô của tín hiệu, bao gồm mảng độ rộng xung và số lượng xung đã lưu.
+ * @return 1 nếu đã thu thập được dữ liệu thô thành công, 0 nếu không có tín hiệu hoặc buffer đầy.
+ */
+uint8_t irReadPortRaw(const GPIO_TypeDef* GPIOx, uint8_t pinNumber, IR_RawData_t* rawData);
+
+/**
  * @brief Phát sóng mang hồng ngoại 38kHz theo đúng cấu trúc giao thức ra chân Port chỉ định.
  * @param GPIOx Con trỏ quản lý vùng nhớ Port (GPIOA, GPIOC, GPIOD).
  * @param pinNumber Số thứ tự bit của chân trong Port (Giá trị từ 0 đến 7).
@@ -75,6 +106,14 @@ uint8_t irReadPort(const GPIO_TypeDef* GPIOx, uint8_t pinNumber, IR_Data_t* irDa
  * @param command Mã lệnh thực thi cần gửi đi.
  */
 void irSendPort(GPIO_TypeDef* GPIOx, uint8_t pinNumber, IR_Protocol_t protocol, uint16_t address, uint32_t command);
+
+/**
+ * @brief Phát tín hiệu hồng ngoại theo cấu trúc xung thô đã thu thập được, không cần giải mã (Hàm chặn).
+ * @param GPIOx Con trỏ quản lý vùng nhớ Port (GPIOA, GPIOC, GPIOD).
+ * @param pinNumber Số thứ tự bit của chân trong Port (Giá trị từ 0 đến 7).
+ * @param rawData Con trỏ tới cấu trúc chứa dữ liệu xung thô đã thu thập được từ hàm irReadPortRaw.
+ */
+void irSendPortRaw(GPIO_TypeDef* GPIOx, uint8_t pinNumber, const IR_RawData_t* rawData);
 
 #endif // IR_ENABLE
 
