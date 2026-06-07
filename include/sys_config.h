@@ -9,23 +9,27 @@
 #ifndef SYS_CONFIG_H
 #define SYS_CONFIG_H
 
-/**
- * @brief Định nghĩa cờ kích hoạt cấu hình hệ thống.
- * @note Macro này xác nhận tệp sys_config đã được nạp thành công vào dự án.
- */
-#define SYS_CONFIG_ACTIVE 1
-
+// ============================================================================
+// CẤU HÌNH CHO DELAY VÀ TIMER THEO PHONG CÁCH ARDUINO
+// ============================================================================
 #define DELAY_ARDUINO_STYLE_ENABLE 1 /**< Kích hoạt các hàm Delay theo phong cách Arduino (delay, delayMicroseconds) */
-
 /** @brief Bật (1) hoặc Tắt (0) thư viện quản lý thời gian hệ thống (micros, millis) */
 #define TIMER_ARDUINO_STYLE_ENABLE       1
 
+// ============================================================================
+// CẤU HÌNH CHO TÍNH NĂNG HỒNG NGOẠO (IR) - Hỗ trợ thu phát đa giao thức NEC, Sony, Samsung
+// ============================================================================
 #define IR_ENABLE                       1
 #define IR_SUPPORT_NEC                  1
 #define IR_SUPPORT_SONY                 1
 #define IR_SUPPORT_SAMSUNG              1
-#define IR_RAW_BUFFER_SIZE  150 // Đảm bảo bắt trọn gói tin của TCL
-
+// Cấu hình các thông số
+#define IR_RAW_BUFFER_SIZE  150 /**< Kích thước bộ đệm lưu trữ dữ liệu xung thô khi thu tín hiệu IR (150 xung) */
+#define IR_TIMEOUT_US             15000 /**< Thời gian chờ tối đa chặn treo chip (15ms) */
+#define IR_TOLERANCE_PERCENT  25    /**< Dung sai cho phép khi so khớp thời gian xung (25%) */
+// ============================================================================
+// CẤU HÌNH CHO TÍNH NĂNG QUẢN LÝ NĂNG LƯỢNG VÀ CHẾ ĐỘ NGỦ (POWER MANAGEMENT)
+// ============================================================================
 #define POWER_ENABLE 1
 
 #endif
