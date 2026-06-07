@@ -146,11 +146,10 @@ void enterStandbyMode(void)
     RCC->APB1PCENR |= RCC_APB1Periph_PWR;
 
     // 2. Kích hoạt tính năng chân Wakeup phần cứng chuyên dụng (PD0)
-    // Thiết lập bit EWUP trong thanh ghi PWR->AWUCTLR để mở cổng nhận tín hiệu thức giấc cứng
-    PWR->AWUCTLR |= PWR_AWUCTLR_EWUP;
+    PWR->AWUCSR |= (1 << 1);
 
     // 3. Xóa cờ báo hiệu thức giấc cũ (CWUF = Clear Wakeup Flag) để sẵn sàng nhận lệnh mới
-    PWR->CTLR |= PWR_CTLR_CWUF;
+    PWR->CTLR |= (1 << 2);
 
     // 4. Cấu hình bit PDDS (Power Down Deep Sleep) = 1 để ép chip chọn Standby thay vì Sleep
     PWR->CTLR |= PWR_CTLR_PDDS;
