@@ -1,5 +1,6 @@
 #include "ch32v003_power.h"
 
+#include "ch32v003_delay.h"
 #include "ch32v003_gpio.h"
 
 #if (POWER_ENABLE == 1)
@@ -62,6 +63,18 @@ void enableWakeupPinPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, con
     __enable_irq();
 }
 
+void enableWakeupPin(const uint8_t mcu_pin, const WakeupTrigger_t trigger)
+{
+    // Chuyển đổi số chân vật lý thành Port và PinNumber
+    GPIO_TypeDef* GPIOx = NULL;
+    uint8_t pinNumber = 0;
+
+    decodeHardwarePin(mcu_pin, &GPIOx, &pinNumber);
+
+    // Gọi hàm cấu hình chân Wakeup theo Port và PinNumber đã xác định
+    enableWakeupPinPort(GPIOx, pinNumber, trigger);
+}
+
 void sleepUltraLowPower(void)
 {
     // Xóa bỏ tham số truyền vào Port cũ, thư viện tự lo!
@@ -70,7 +83,7 @@ void sleepUltraLowPower(void)
     apb2_clock_bak = RCC->APB2PCENR;
 
     // Đợi bộ đệm SWIO đẩy hết dữ liệu chuỗi ký tự cũ ra màn hình máy tính [ch32fun]
-    Delay_Ms(5);
+    delayMs(5);
 
     // [BƯỚC 1]: Ngắt kết nối chân debug SWIO để triệt tiêu dòng rò phần cứng [ch32fun]
     AFIO->PCFR1 |= (1 << 26);
@@ -119,7 +132,7 @@ void sleepUltraLowPower(void)
     AFIO->PCFR1 &= ~(1 << 26);
 
     // Trễ nhỏ để mạch nạp WCH-Link đồng bộ lại nhịp thở với chip [ch32fun]
-    Delay_Ms(10);
+    delayMs(10);
 }
 
 // ============================================================================
