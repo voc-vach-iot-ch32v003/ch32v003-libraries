@@ -51,6 +51,19 @@ static const IR_ProtocolConfig_t irConfigs[] = {
         .encodeType = IR_ENCODE_WIDTH, // Sony mã hóa bằng độ rộng xung vuông
     },
 #endif
+#if (IR_SUPPORT_TCL)
+    {
+        .protocol = IR_TCL,
+        .name = "TCL",
+        .carrierFreqHz = 38000,
+        .leader = {.mark = 4000, .space = 4000},
+        .bit0 = {.mark = 590, .space = 1050},
+        .bit1 = {.mark = 590, .space = 2450},
+        .stopMark = 590,
+        .totalBits = 76,
+        .encodeType = IR_ENCODE_DISTANCE
+    },
+#endif
 };
 
 // Tính toán số lượng giao thức đang được enable thực tế trong mảng
@@ -162,25 +175,35 @@ static void space(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const uint32_t t
 
 uint8_t irReadPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_Data_t* irData)
 {
-    if (digitalReadPort(GPIOx, pinNumber) == HIGH) return 0;
+    IR_RawData_t rawTmp;
 
-    // Đo xung mở đầu thực tế
-    const uint32_t actualLeaderMark = getPulseWidth(GPIOx, pinNumber, LOW);
-    const uint32_t actualLeaderSpace = getPulseWidth(GPIOx, pinNumber, HIGH);
+    if (!irReadPortRaw(GPIOx, pinNumber, &rawTmp))
+    {
+        return 0;
+    }
+
+    const uint16_t actMark = rawTmp.rawBuf[0];
+    const uint16_t actSpace = rawTmp.rawBuf[1];
+    const uint16_t actTotalBits = (uint16_t)((rawTmp.rawLen - 2) / 2);
 
     for (uint8_t p = 0; p < numConfigs; p++)
     {
         const IR_ProtocolConfig_t* cfg = &irConfigs[p];
 
-        // 1. NỚI RỘNG CỬA CHECK LEADER (Cho phép lệch hẳn 1000us - 1500us vẫn đón nhận)
-        if (isMatching(actualLeaderMark, cfg->leader.mark) &&
-            (cfg->leader.space == 0 || isMatching(actualLeaderSpace, cfg->leader.space)))
+        if (actTotalBits != (uint16_t)cfg->totalBits)
         {
-            uint64_t decodedData = 0;
-            uint8_t bitCount = 0;
-            uint8_t success = 1;
+            continue;
+        }
 
-            // Tính toán ngưỡng cắt động
+        if (isMatching(actMark, cfg->leader.mark) &&
+            (cfg->leader.space == 0 || isMatching(actSpace, cfg->leader.space)))
+        {
+            // 1. Xóa sạch mảng dữ liệu cũ bằng 0 trước khi nạp bit mới
+            for (uint8_t b = 0; b < IR_RAW_DATA_BYTES; b++)
+            {
+                irData->rawData[b] = 0;
+            }
+
             uint32_t bitThreshold = 0;
             if (cfg->encodeType == IR_ENCODE_DISTANCE)
             {
@@ -191,51 +214,39 @@ uint8_t irReadPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_Data_t
                 bitThreshold = (cfg->bit0.mark + cfg->bit1.mark) / 2;
             }
 
-            // 2. Vòng lặp bẫy bit dữ liệu
+            // 2. Vòng lặp bóc tách và nạp bit vào mảng
+            uint8_t rawIdx = 2;
             for (uint8_t i = 0; i < cfg->totalBits; i++)
             {
-                const uint32_t bitMark = getPulseWidth(GPIOx, pinNumber, LOW);
-                const uint32_t bitSpace = getPulseWidth(GPIOx, pinNumber, HIGH);
+                const uint16_t bitMark = rawTmp.rawBuf[rawIdx++];
+                const uint16_t bitSpace = rawTmp.rawBuf[rawIdx++];
+                uint8_t isBit1 = 0;
 
-                // Bảo vệ chống treo mạch nếu mất sườn xung giữa chừng
-                if (bitMark == 0 || (bitSpace == 0 && i < (cfg->totalBits - 1)))
-                {
-                    success = 0;
-                    break;
-                }
-
-                // Phân định Bit 0 / Bit 1 bằng ngưỡng cắt động và 1ULL
                 if (cfg->encodeType == IR_ENCODE_DISTANCE)
                 {
-                    if (bitSpace > bitThreshold)
-                    {
-                        decodedData |= (1ULL << i);
-                    }
+                    if (bitSpace > bitThreshold) isBit1 = 1;
                 }
                 else if (cfg->encodeType == IR_ENCODE_WIDTH)
                 {
-                    if (bitMark > bitThreshold)
-                    {
-                        decodedData |= (1ULL << i);
-                    }
+                    if (bitMark > bitThreshold) isBit1 = 1;
                 }
 
-                bitCount++;
+                // NẠP BIT VÀO MẢNG: i / 8 xác định vị trí byte, i % 8 xác định vị trí bit trong byte đó
+                if (isBit1)
+                {
+                    irData->rawData[i / 8] |= (1 << (i % 8));
+                }
             }
 
-            // 3. ĐÓNG GÓI DỮ LIỆU (Bỏ check Checksum rườm rà, chỉ tin vào số lượng bit)
-            if (success && bitCount == cfg->totalBits)
-            {
-                irData->protocol = cfg->protocol;
-                irData->rawData = decodedData;
-                irData->bits = cfg->totalBits;
+            // 3. Đóng gói các thông tin cơ bản cho tầng ứng dụng
+            irData->protocol = cfg->protocol;
+            irData->bits = cfg->totalBits;
 
-                // Tách byte phục vụ tầng ứng dụng viết code cho tiện
-                irData->address = decodedData & 0xFF;
-                irData->command = (decodedData >> 16) & 0xFF;
+            // Tách nhanh Address và Command từ các byte đầu tiên (phù hợp với hệ NEC/Samsung)
+            irData->address = (uint16_t)(irData->rawData[0] | (irData->rawData[1] << 8));
+            irData->command = (uint32_t)(irData->rawData[2] | (irData->rawData[3] << 16));
 
-                return 1; // Trả về THÀNH CÔNG ngay lập tức!
-            }
+            return 1;
         }
     }
     return 0;
@@ -374,6 +385,7 @@ void irAnalyzeRaw(const IR_RawData_t* rawData)
 {
     if (rawData == NULL || rawData->rawLen < 4) return;
 
+    // 1. Tính toán các thông số thực tế từ mảng xung thô thu được
     const uint16_t actMark = rawData->rawBuf[0];
     const uint16_t actSpace = rawData->rawBuf[1];
     const uint16_t totalBits = (uint16_t)((rawData->rawLen - 2) / 2);
@@ -385,27 +397,34 @@ void irAnalyzeRaw(const IR_RawData_t* rawData)
     uint8_t matched = 0;
     const IR_ProtocolConfig_t* targetCfg = NULL;
 
+    // 2. Chạy hết mảng cấu hình để tìm kiếm xem có thằng nào khớp 100% không
     for (uint8_t p = 0; p < numConfigs; p++)
     {
         const IR_ProtocolConfig_t* cfg = &irConfigs[p];
-        const int mDiff = (int)actMark - (int)cfg->leader.mark;
-        const int sDiff = (int)actSpace - (int)cfg->leader.space;
 
+        // Tính toán sai số Leader
         const uint16_t mErr = (uint16_t)((absDiff(actMark, cfg->leader.mark) * 100) / cfg->leader.mark);
         const uint16_t sErr = (uint16_t)((absDiff(actSpace, cfg->leader.space) * 100) / cfg->leader.space);
 
-        printf(" -> [%s]: Lech M:%s%d (%u%%), S:%s%d (%u%%)\r\n",
-               cfg->name,
-               (mDiff >= 0) ? "+" : "", mDiff, (unsigned int)mErr,
-               (sDiff >= 0) ? "+" : "", sDiff, (unsigned int)sErr);
-
-        if (mErr <= 25 && sErr <= 25)
+        // ĐIỀU KIỆN ÉP KHỚP HOÀN TOÀN: Khớp Leader (<25%) VÀ Phải khớp tuyệt đối số lượng Bit
+        if (mErr <= 25 && sErr <= 25 && totalBits == (uint16_t)cfg->totalBits)
         {
             matched = 1;
             targetCfg = cfg;
+
+            // In thông tin độ lệch của giao thức khớp duy nhất này
+            const int mDiff = (int)actMark - (int)cfg->leader.mark;
+            const int sDiff = (int)actSpace - (int)cfg->leader.space;
+            printf(" -> [%s] MATCHED: Lech M:%s%d (%u%%), S:%s%d (%u%%)\r\n",
+                   cfg->name,
+                   (mDiff >= 0) ? "+" : "", mDiff, (unsigned int)mErr,
+                   (sDiff >= 0) ? "+" : "", sDiff, (unsigned int)sErr);
+
+            break; // Đã tìm thấy giao thức đích thực, dừng cuộc chơi!
         }
     }
 
+    // 3. Tính toán các thông số trung bình của Bit 0 / Bit 1 để gợi ý STRUCT
     uint32_t avgBit0Space = 0, avgBit1Space = 0, avgMark = 0;
     uint16_t b0Count = 0, b1Count = 0;
 
@@ -415,7 +434,7 @@ void irAnalyzeRaw(const IR_RawData_t* rawData)
         const uint16_t sTime = rawData->rawBuf[i + 1];
         avgMark += mTime;
 
-        if (sTime > 1100)
+        if (sTime > 1100) // Ngưỡng phân định khoảng lặng mặc định
         {
             avgBit1Space += sTime;
             b1Count++;
@@ -429,21 +448,18 @@ void irAnalyzeRaw(const IR_RawData_t* rawData)
 
     if (totalBits > 0) avgMark /= totalBits;
 
+    // 4. ĐƯA RA KẾT LUẬN CUỐI CÙNG (Sau khi đã phân tích và chạy hết dữ liệu)
     printf("\r\n🔍 KET LUAN:\r\n");
     if (matched && targetCfg != NULL)
     {
         printf(" -> Khop giao thuc: [%s]\r\n", targetCfg->name);
-        if (totalBits != (uint16_t)targetCfg->totalBits)
-        {
-            printf(" -> Canh bao: Sai so bit! Cấu hình: %u, Thuc te: %u\r\n",
-                   (unsigned int)targetCfg->totalBits, (unsigned int)totalBits);
-        }
     }
     else
     {
         printf(" -> KHONG THUOC GIAO THUC DA DINH NGHIA (Remote La)\r\n");
     }
 
+    // 5. LUÔN LUÔN GỢI Ý CẤU TRÚC (Dành cho việc vọc vạch, clone hoặc tạo profile mới)
     printf("\r\n🛠️ STRUCT SUGGEST:\r\n");
     printf("  .totalBits = %u\r\n", (unsigned int)totalBits);
     printf("  .leader    = {.mark = %u, .space = %u}\r\n", (unsigned int)actMark, (unsigned int)actSpace);
@@ -462,6 +478,7 @@ void irPrintResult(const IR_Data_t* irData)
 {
     if (irData == NULL) return;
 
+    // 1. Tìm tên giao thức dựa vào ID
     const char* pName = "UNKNOWN";
     for (uint8_t p = 0; p < numConfigs; p++)
     {
@@ -472,18 +489,25 @@ void irPrintResult(const IR_Data_t* irData)
         }
     }
 
-    const uint32_t rawHigh = (uint32_t)(irData->rawData >> 32);
-    const uint32_t rawLow = (uint32_t)(irData->rawData & 0xFFFFFFFF);
-
     printf("🎉 SUCCESS -> [%s] | Bits: %u\r\n", pName, (unsigned int)irData->bits);
-    printf("RAW: 0x%08X%08X\r\n", (unsigned int)rawHigh, (unsigned int)rawLow);
 
+    // 2. IN CHUỖI DỮ LIỆU HEX (Thay thế cho cách in rawHigh / rawLow cũ)
+    // In ngược từ byte cuối về byte đầu để số hiển thị thuận mắt từ Trái sang Phải
+    printf("RAW: 0x");
+    for (int i = IR_RAW_DATA_BYTES - 1; i >= 0; i--)
+    {
+        printf("%02X", irData->rawData[i]);
+    }
+    printf("\r\n");
+
+    // 3. LOGIC RIÊNG CHO HỆ 32-BIT (NEC / SAMSUNG / ...) - GIỮ NGUYÊN Ý ĐỒ CỦA BẠN
     if (irData->bits == 32)
     {
-        const uint8_t b1 = (uint8_t)(rawLow & 0xFF);
-        const uint8_t b2 = (uint8_t)((rawLow >> 8) & 0xFF);
-        const uint8_t b3 = (uint8_t)((rawLow >> 16) & 0xFF);
-        const uint8_t b4 = (uint8_t)((rawLow >> 24) & 0xFF);
+        // Vì là mảng byte, ta nhặt trực tiếp 4 byte đầu tiên cực kỳ nhàn, không cần dịch >> nữa!
+        const uint8_t b1 = irData->rawData[0]; // Byte thấp nhất (LSB)
+        const uint8_t b2 = irData->rawData[1];
+        const uint8_t b3 = irData->rawData[2];
+        const uint8_t b4 = irData->rawData[3]; // Byte cao nhất (MSB của khung 32-bit)
 
         printf("📊 LSB-First bytes:\r\n");
         printf("   Addr: 0x%02X (Bin: ", b1);
@@ -499,6 +523,7 @@ void irPrintResult(const IR_Data_t* irData)
         printBin8(b4);
         printf(")\r\n");
 
+        // Kiểm tra Checksum (Byte đảo nghịch)
         if ((uint8_t)(b1 + b2) == 0xFF && (uint8_t)(b3 + b4) == 0xFF)
         {
             printf("   👉 [Checksum OK]\r\n");

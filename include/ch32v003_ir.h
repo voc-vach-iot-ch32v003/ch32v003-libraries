@@ -22,6 +22,18 @@
 #define IR_TOLERANCE_PERCENT  25    /**< Dung sai cho phép khi so khớp thời gian xung (25%) */
 #endif
 
+#ifndef IR_RAW_BUFFER_SIZE
+#define IR_RAW_BUFFER_SIZE    256 /**< Số lượng sườn xung (Edges) tối đa có thể bắt được trong một khung truyền. */
+#endif
+
+#ifndef IR_MAX_SUPPORTED_BITS
+#define IR_MAX_SUPPORTED_BITS 80 /**< Số lượng BIT dữ liệu tối đa mà thư viện có thể giải mã và quản lý. */
+#endif
+
+#define IR_RAW_DATA_BYTES        ((IR_MAX_SUPPORTED_BITS + 7) / 8) /**< Tự động tính toán số BYTE cần thiết trong struct IR_Data_t (Chia tròn lên). */
+
+
+
 // ============================================================================
 // ĐỊNH NGHĨA DANH MỤC GIAO THỨC & CẤU TRÚC DỮ LIỆU
 // ============================================================================
@@ -50,7 +62,18 @@ typedef enum
      * - Tần số sóng mang: 38 kHz.
      * - Cấu trúc: Thường biến thể 16-bit Address và 16-bit Command.
      */
-    IR_SAMSUNG = 3
+    IR_SAMSUNG = 3,
+
+    /** * @brief Giao thức TCL (Smart TV Remote).
+     * - Tần số sóng mang: 38 kHz.
+     * - Khung truyền dữ liệu kỷ lục: 74 bit (Khác biệt hoàn toàn so với chuẩn NEC 32-bit).
+     * - Mã hóa: Theo phương pháp khoảng cách xung (Pulse Distance Width).
+     * + Leader: Mark 4000 us | Space 4000 us (Tỉ lệ 1:1).
+     * + Bit 0 : Mark 560 us  | Space 1000 us.
+     * + Bit 1 : Mark 560 us  | Space 2000 us (Khoảng lặng dài gấp đôi).
+     * + Stop  : Mark 560 us để chốt khung.
+     */
+    IR_TCL = 4,
 } IR_Protocol_t;
 
 /**
@@ -94,7 +117,7 @@ typedef struct
 typedef struct
 {
     IR_Protocol_t protocol; /**< Loại giao thức giải mã thành công */
-    uint64_t rawData; /**< Toàn bộ data thô nhận được (Hỗ trợ tốt các giao thức dài như TLC 48-bit) */
+    uint8_t rawData[IR_RAW_DATA_BYTES]; /**< */
     uint16_t address; /**< Địa chỉ định danh thiết bị (Address) */
     uint32_t command; /**< Mã lệnh thực thi / Dữ liệu nút bấm (Command / Data) */
     uint8_t bits; /**< Số lượng bit thực tế của gói tin nhận được */
