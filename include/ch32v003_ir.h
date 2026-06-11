@@ -39,40 +39,15 @@
 // ============================================================================
 
 /**
- * @brief Danh sách các giao thức hồng ngoại (IR Protocols) được thư viện hỗ trợ.
+ * @brief Định nghĩa ID cho các giao thức hồng ngoại được thư viện hỗ trợ.
+ * @note Dùng để map giữa dữ liệu động trong RAM và bảng tra cứu tĩnh trong Flash.
  */
 typedef enum
 {
-    /** @brief Chưa xác định hoặc tín hiệu không hợp chuẩn giao thức nào. */
     IR_UNKNOWN = 0,
-
-    /** * @brief Giao thức NEC (Mặc định phổ biến nhất).
-     * - Tần số sóng mang: 38 kHz.
-     * - Cấu trúc: 8-bit Address, 8-bit Command (Kèm bit đảo logic kiểm tra lỗi).
-     */
     IR_NEC = 1,
-
-    /** * @brief Giao thức SONY (SIRC).
-     * - Tần số sóng mang: 40 kHz.
-     * - Cấu trúc: Thường là 12-bit, 15-bit, hoặc 20-bit (7-bit Command, còn lại là Address).
-     */
     IR_SONY = 2,
-
-    /** * @brief Giao thức SAMSUNG.
-     * - Tần số sóng mang: 38 kHz.
-     * - Cấu trúc: Thường biến thể 16-bit Address và 16-bit Command.
-     */
     IR_SAMSUNG = 3,
-
-    /** * @brief Giao thức TCL (Smart TV Remote).
-     * - Tần số sóng mang: 38 kHz.
-     * - Khung truyền dữ liệu kỷ lục: 74 bit (Khác biệt hoàn toàn so với chuẩn NEC 32-bit).
-     * - Mã hóa: Theo phương pháp khoảng cách xung (Pulse Distance Width).
-     * + Leader: Mark 4000 us | Space 4000 us (Tỉ lệ 1:1).
-     * + Bit 0 : Mark 560 us  | Space 1000 us.
-     * + Bit 1 : Mark 560 us  | Space 2000 us (Khoảng lặng dài gấp đôi).
-     * + Stop  : Mark 560 us để chốt khung.
-     */
     IR_TCL = 4,
 } IR_Protocol_t;
 
@@ -95,6 +70,15 @@ typedef enum
 } IR_EncodeType_t;
 
 /**
+ * @brief Định nghĩa chiều dịch bit (Bit Order) của giao thức.
+ */
+typedef enum
+{
+    IR_ORDER_LSB_FIRST = 0, // Bit thấp (Bit 0) được gửi/nhận trước (Mặc định: NEC, Samsung, TCL...)
+    IR_ORDER_MSB_FIRST = 1 // Bit cao (Bit 7) được gửi/nhận trước (Một số dòng tinh chỉnh đặc biệt)
+} IR_BitOrder_t;
+
+/**
  * @brief Cấu trúc định nghĩa thông số kỹ thuật cốt lõi của một giao thức IR.
  * @note Lưu hoàn toàn trong Flash nhờ từ khóa const.
  */
@@ -108,7 +92,8 @@ typedef struct
     IR_Pulse_t bit1; /**< Thông số định nghĩa logic 1 */
     uint16_t stopMark; /**< Xung kết thúc gói tin (us) */
     uint8_t totalBits; /**< Tổng số lượng bit của giao thức (Hỗ trợ tối đa 64 bit, ví dụ TLC = 48) */
-    IR_EncodeType_t encodeType;
+    IR_EncodeType_t encodeType; /**< Kiểu mã hóa vật lý (Distance hay Width) */
+    IR_BitOrder_t bitOrder; /**< Chiều dịch bit truyền thông của hãng */
 } IR_ProtocolConfig_t;
 
 /**

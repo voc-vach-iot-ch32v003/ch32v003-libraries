@@ -20,7 +20,8 @@ static const IR_ProtocolConfig_t irConfigs[] = {
         .bit1 = {.mark = 560, .space = 1690},
         .stopMark = 560,
         .totalBits = 32,
-        .encodeType = IR_ENCODE_DISTANCE
+        .encodeType = IR_ENCODE_DISTANCE,
+        .bitOrder = IR_ORDER_LSB_FIRST,
     },
 #endif
 
@@ -34,7 +35,8 @@ static const IR_ProtocolConfig_t irConfigs[] = {
         .bit1 = {.mark = 560, .space = 1600},
         .stopMark = 560,
         .totalBits = 32,
-        .encodeType = IR_ENCODE_DISTANCE
+        .encodeType = IR_ENCODE_DISTANCE,
+        .bitOrder = IR_ORDER_LSB_FIRST,
     },
 #endif
 
@@ -48,7 +50,8 @@ static const IR_ProtocolConfig_t irConfigs[] = {
         .bit1 = {.mark = 1200, .space = 600},
         .stopMark = 0,
         .totalBits = 12,
-        .encodeType = IR_ENCODE_WIDTH, // Sony mã hóa bằng độ rộng xung vuông
+        .encodeType = IR_ENCODE_WIDTH,
+        .bitOrder = IR_ORDER_LSB_FIRST,
     },
 #endif
 #if (IR_SUPPORT_TCL)
@@ -61,7 +64,8 @@ static const IR_ProtocolConfig_t irConfigs[] = {
         .bit1 = {.mark = 590, .space = 2450},
         .stopMark = 590,
         .totalBits = 76,
-        .encodeType = IR_ENCODE_DISTANCE
+        .encodeType = IR_ENCODE_DISTANCE,
+        .bitOrder = IR_ORDER_LSB_FIRST,
     },
 #endif
 };
@@ -87,45 +91,6 @@ static inline uint8_t isMatching(const uint32_t duration, const uint32_t target)
 {
     const uint32_t delta = (target * IR_TOLERANCE_PERCENT) / 100;
     return (duration >= (target - delta) && duration <= (target + delta));
-}
-
-/**
- * @brief Đo độ rộng (thời gian duy trì) của một trạng thái xung (HIGH hoặc LOW) trên một chân GPIO.
- * @details Hàm sử dụng bộ đếm định thời hệ thống thông qua hàm ticks() để đo đạc chính xác thời gian theo us.
- * Cơ chế chặn treo (Timeout) dựa vào `IR_TIMEOUT_US` ngăn chặn việc vòng lặp `while` bị kẹt vô tận
- * khi tín hiệu bị nhiễu hoặc đứt đoạn.
- * * @param GPIOx Con trỏ tới ngoại vi GPIO quản lý chân (Ví dụ: GPIOA, GPIOD).
- * @param pinNumber Chỉ số chân cần đọc dữ liệu (0 - 7).
- * @param state Trạng thái xung cần đo (HIGH hoặc LOW).
- * @return uint32_t Thời gian duy trì trạng thái xung đó (us). Trả về 0 nếu quá thời gian chờ (Timeout).
- */
-static uint32_t getPulseWidth(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const uint8_t state)
-{
-    const uint32_t ticksPerUs = FUNCONF_SYSTEM_CORE_CLOCK / 1000000;
-    const uint32_t timeoutTicks = IR_TIMEOUT_US * ticksPerUs;
-    uint32_t startTime = ticks();
-
-    // Vòng lặp 1: Chờ cho đến khi chân GPIO chuyển sang trạng thái mong muốn (Bắt đầu sườn xung)
-    while (digitalReadPort(GPIOx, pinNumber) != state)
-    {
-        if ((ticks() - startTime) > timeoutTicks) return 0; // Timeout chờ sườn -> Thoát
-    }
-
-    // Ghi lại thời điểm bắt đầu sườn xung thực tế
-    startTime = ticks();
-
-    // Vòng lặp 2: Đếm thời gian chân GPIO duy trì trạng thái đó
-    while (digitalReadPort(GPIOx, pinNumber) == state)
-    {
-        // SỬA TẠI ĐÂY: Nếu quá thời gian duy trì, trả về 0 lập tức để báo lỗi treo/mất tín hiệu
-        if ((ticks() - startTime) > timeoutTicks) return 0;
-    }
-
-    // Tính toán thời gian kết thúc xung thực tế
-    const uint32_t durationTicks = ticks() - startTime;
-
-    // Quy đổi số chu kỳ máy (ticks) đo được sang đơn vị micro giây (us)
-    return durationTicks / ticksPerUs;
 }
 
 /**
@@ -199,7 +164,7 @@ uint8_t irReadPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_Data_t
             (cfg->leader.space == 0 || isMatching(actSpace, cfg->leader.space)))
         {
             // 1. Xóa sạch mảng dữ liệu cũ bằng 0 trước khi nạp bit mới
-            for (uint8_t b = 0; b < IR_RAW_DATA_BYTES; b++)
+            for (int b = 0; b < IR_RAW_DATA_BYTES; b++)
             {
                 irData->rawData[b] = 0;
             }
@@ -231,10 +196,19 @@ uint8_t irReadPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_Data_t
                     if (bitMark > bitThreshold) isBit1 = 1;
                 }
 
-                // NẠP BIT VÀO MẢNG: i / 8 xác định vị trí byte, i % 8 xác định vị trí bit trong byte đó
+                // 👉 CẬP NHẬT: NẠP BIT VÀO MẢNG DỰA TRÊN BIT ORDER CỦA HÃNG
                 if (isBit1)
                 {
-                    irData->rawData[i / 8] |= (1 << (i % 8));
+                    if (cfg->bitOrder == IR_ORDER_MSB_FIRST)
+                    {
+                        // Nếu là MSB-First, bit nhận được đầu tiên sẽ là bit cao nhất (Bit 7 của byte)
+                        irData->rawData[i / 8] |= (1 << (7 - (i % 8)));
+                    }
+                    else
+                    {
+                        // Nếu là LSB-First (Mặc định), bit nhận được đầu tiên là bit thấp nhất (Bit 0 của byte)
+                        irData->rawData[i / 8] |= (1 << (i % 8));
+                    }
                 }
             }
 
@@ -242,7 +216,8 @@ uint8_t irReadPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_Data_t
             irData->protocol = cfg->protocol;
             irData->bits = cfg->totalBits;
 
-            // Tách nhanh Address và Command từ các byte đầu tiên (phù hợp với hệ NEC/Samsung)
+            // Tách nhanh Address và Command từ các byte đầu tiên (phù hợp với hệ LSB như NEC/Samsung)
+            // Lưu ý: Đoạn ép byte này hoạt động chuẩn khi cấu hình là LSB-First.
             irData->address = (uint16_t)(irData->rawData[0] | (irData->rawData[1] << 8));
             irData->command = (uint32_t)(irData->rawData[2] | (irData->rawData[3] << 16));
 
@@ -258,7 +233,7 @@ uint8_t irReadPortRaw(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, IR_Raw
 
     const uint32_t maxTimeoutTicks = IR_TIMEOUT_US * (FUNCONF_SYSTEM_CORE_CLOCK / 1000000);
     uint32_t lastTick = ticks();
-    uint8_t index = 0;
+    uint16_t index = 0;
     uint8_t lastState = LOW;
 
     rawData->rawLen = 0;
@@ -310,9 +285,85 @@ void irSendPortRaw(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const IR_RawDat
     digitalWritePort(GPIOx, pinNumber, LOW);
 }
 
+void irSendPortData(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const IR_Data_t* irData)
+{
+    if (irData == NULL) return;
+
+    // 1. Quét mảng tìm cấu hình tần số và timeline xung của giao thức cần phát
+    const IR_ProtocolConfig_t* cfg = NULL;
+    for (uint8_t p = 0; p < numConfigs; p++)
+    {
+        if (irConfigs[p].protocol == irData->protocol)
+        {
+            cfg = &irConfigs[p];
+            break;
+        }
+    }
+    if (!cfg) return; // Không tìm thấy profile hoặc chưa enable hãng này
+
+    // 2. Bắn chuỗi xung mồi (Leader Mark & Space)
+    markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->leader.mark);
+    if (cfg->leader.space > 0)
+    {
+        space(GPIOx, pinNumber, cfg->leader.space);
+    }
+
+    // 3. Vòng lặp bốc tách từng bit một từ mảng byte rawData để phát ra ngoài
+    for (uint8_t i = 0; i < irData->bits; i++)
+    {
+        // 👉 ÁP DỤNG BIT ORDER: Kiểm tra cấu hình dịch bit của hãng
+        uint8_t isBit1 = 0;
+        if (cfg->bitOrder == IR_ORDER_MSB_FIRST)
+        {
+            // Dịch từ bit cao nhất (Bit 7) xuống bit thấp nhất (Bit 0) trong một byte
+            isBit1 = (irData->rawData[i / 8] >> (7 - (i % 8))) & 0x01;
+        }
+        else
+        {
+            // Dịch từ bit thấp nhất (Bit 0) lên bit cao nhất (Bit 7) (Mặc định LSB-First)
+            isBit1 = (irData->rawData[i / 8] >> (i % 8)) & 0x01;
+        }
+
+        if (cfg->encodeType == IR_ENCODE_DISTANCE) // Kiểu NEC, SAMSUNG, TCL
+            if (!isBit1)
+            {
+                markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->bit0.mark);
+                space(GPIOx, pinNumber, cfg->bit0.space);
+            }
+            else
+            {
+                markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->bit1.mark);
+                space(GPIOx, pinNumber, cfg->bit1.space);
+            }
+        else if (cfg->encodeType == IR_ENCODE_WIDTH) // Kiểu SONY
+        {
+            if (isBit1)
+            {
+                markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->bit1.mark);
+                space(GPIOx, pinNumber, cfg->bit1.space);
+            }
+            else
+            {
+                markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->bit0.mark);
+                space(GPIOx, pinNumber, cfg->bit0.space);
+            }
+        }
+    }
+
+    // 4. Bắn xung chốt hạ (Stop Mark) để kết thúc khung truyền
+    if (cfg->stopMark > 0)
+    {
+        markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->stopMark);
+    }
+
+    // Đảm bảo LED tắt hoàn toàn sau khi gửi dữ liệu xong
+    digitalWritePort(GPIOx, pinNumber, LOW);
+}
+
 void irSendPort(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const IR_Protocol_t protocol, const uint16_t address,
                 const uint32_t command)
 {
+    // 👉 1. Chủ động tìm kiếm cấu hình của giao thức này trong Flash trước
     const IR_ProtocolConfig_t* cfg = NULL;
     for (uint8_t p = 0; p < numConfigs; p++)
     {
@@ -322,47 +373,36 @@ void irSendPort(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const IR_Protocol_
             break;
         }
     }
-    if (!cfg) return; // Giao thức chưa được enable hoặc không tồn tại
+    if (!cfg) return; // Nếu giao thức chưa được định nghĩa trong irConfigs[], thoát ngay
 
-    // Xử lý nén dữ liệu bit để phát (Ví dụ mẫu cho NEC, với TLC bạn có thể custom thêm)
-    uint64_t dataToTx = 0;
+    IR_Data_t tmp;
+    tmp.protocol = protocol;
+
+    // 👉 2. Tự động lấy số lượng bit mặc định định nghĩa sẵn trong mảng Flash cấu hình tĩnh
+    tmp.bits = cfg->totalBits;
+
+    // 3. Đóng gói dữ liệu mộc vào mảng byte theo đúng quy tắc của từng hãng
+    tmp.rawData[0] = address & 0xFF;
+    tmp.rawData[1] = (address >> 8) & 0xFF;
+
     if (protocol == IR_NEC)
     {
-        dataToTx = (address & 0xFF) | ((~(address) & 0xFF) << 8) |
-            ((command & 0xFF) << 16) | ((~(command) & 0xFF) << 24);
+        tmp.rawData[0] = address & 0xFF;
+        tmp.rawData[1] = (~address) & 0xFF;
+        tmp.rawData[2] = command & 0xFF;
+        tmp.rawData[3] = (~command) & 0xFF;
     }
     else
     {
-        return; // Cần bổ sung quy luật gộp bit riêng của từng hãng khi phát chuỗi tường minh
+        tmp.rawData[2] = command & 0xFF;
+        tmp.rawData[3] = (command >> 8) & 0xFF;
+        tmp.rawData[4] = (command >> 16) & 0xFF;
+        tmp.rawData[5] = (command >> 24) & 0xFF;
     }
 
-    // Phát xung Leader
-    markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->leader.mark);
-    space(GPIOx, pinNumber, cfg->leader.space);
-
-    // Phát chuỗi bit dữ liệu
-    for (uint8_t i = 0; i < cfg->totalBits; i++)
-    {
-        if (dataToTx & ((uint64_t)1 << i))
-        {
-            markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->bit1.mark);
-            space(GPIOx, pinNumber, cfg->bit1.space);
-        }
-        else
-        {
-            markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->bit0.mark);
-            space(GPIOx, pinNumber, cfg->bit0.space);
-        }
-    }
-
-    // Phát xung Stop kết thúc
-    if (cfg->stopMark > 0)
-    {
-        markHz(GPIOx, pinNumber, cfg->carrierFreqHz, cfg->stopMark);
-    }
-    digitalWritePort(GPIOx, pinNumber, LOW);
+    // 4. Đẩy sang hàm core chính để thực hiện phát xung băm
+    irSendPortData(GPIOx, pinNumber, &tmp);
 }
-
 
 // ============================================================================
 // HÀM CHẨN ĐOÁN VÀ PHÂN TÍCH GIAO THỨC MỚI (TEST FUNCTIONS)
@@ -391,13 +431,13 @@ void irAnalyzeRaw(const IR_RawData_t* rawData)
     const uint16_t totalBits = (uint16_t)((rawData->rawLen - 2) / 2);
 
     printf("\r\n--- IR PROTOCOL FINDER ---\r\n");
-    printf("Edges: %u | Leader M: %u us, S: %u us\r\n",
-           (unsigned int)rawData->rawLen, (unsigned int)actMark, (unsigned int)actSpace);
+    printf("Edges: %u | Leader M: %u us, S: %u us | Total Bits: %u\r\n",
+           (unsigned int)rawData->rawLen, (unsigned int)actMark, (unsigned int)actSpace, (unsigned int)totalBits);
 
     uint8_t matched = 0;
     const IR_ProtocolConfig_t* targetCfg = NULL;
 
-    // 2. Chạy hết mảng cấu hình để tìm kiếm xem có thằng nào khớp 100% không
+    // 2. Chạy hết mảng cấu hình để tìm kiếm xem có thằng nào khớp không
     for (uint8_t p = 0; p < numConfigs; p++)
     {
         const IR_ProtocolConfig_t* cfg = &irConfigs[p];
@@ -415,10 +455,11 @@ void irAnalyzeRaw(const IR_RawData_t* rawData)
             // In thông tin độ lệch của giao thức khớp duy nhất này
             const int mDiff = (int)actMark - (int)cfg->leader.mark;
             const int sDiff = (int)actSpace - (int)cfg->leader.space;
-            printf(" -> [%s] MATCHED: Lech M:%s%d (%u%%), S:%s%d (%u%%)\r\n",
+            printf(" -> [%s] MATCHED: Lech M:%s%d (%u%%), S:%s%d (%u%%) | Order: %s\r\n",
                    cfg->name,
                    (mDiff >= 0) ? "+" : "", mDiff, (unsigned int)mErr,
-                   (sDiff >= 0) ? "+" : "", sDiff, (unsigned int)sErr);
+                   (sDiff >= 0) ? "+" : "", sDiff, (unsigned int)sErr,
+                   (cfg->bitOrder == IR_ORDER_MSB_FIRST) ? "MSB-FIRST" : "LSB-FIRST");
 
             break; // Đã tìm thấy giao thức đích thực, dừng cuộc chơi!
         }
@@ -428,27 +469,42 @@ void irAnalyzeRaw(const IR_RawData_t* rawData)
     uint32_t avgBit0Space = 0, avgBit1Space = 0, avgMark = 0;
     uint16_t b0Count = 0, b1Count = 0;
 
+    // Khởi tạo mảng tạm để thử nghiệm dịch dữ liệu HEX phục vụ in log gợi ý
+    uint8_t hexLSB[IR_RAW_DATA_BYTES] = {0};
+    uint8_t hexMSB[IR_RAW_DATA_BYTES] = {0};
+    uint8_t bitIdx = 0;
+
     for (uint8_t i = 2; i < rawData->rawLen - 1; i += 2)
     {
         const uint16_t mTime = rawData->rawBuf[i];
         const uint16_t sTime = rawData->rawBuf[i + 1];
         avgMark += mTime;
 
+        uint8_t isBit1 = 0;
         if (sTime > 1100) // Ngưỡng phân định khoảng lặng mặc định
         {
             avgBit1Space += sTime;
             b1Count++;
+            isBit1 = 1;
         }
         else
         {
             avgBit0Space += sTime;
             b0Count++;
         }
+
+        // Ép thử bit vào mảng tạm theo cả 2 chiều để hiển thị gợi ý mã HEX
+        if (isBit1 && (bitIdx < IR_RAW_DATA_BYTES * 8))
+        {
+            hexLSB[bitIdx / 8] |= (1 << (bitIdx % 8)); // Thử dịch kiểu LSB
+            hexMSB[bitIdx / 8] |= (1 << (7 - (bitIdx % 8))); // Thử dịch kiểu MSB
+        }
+        bitIdx++;
     }
 
     if (totalBits > 0) avgMark /= totalBits;
 
-    // 4. ĐƯA RA KẾT LUẬN CUỐI CÙNG (Sau khi đã phân tích và chạy hết dữ liệu)
+    // 4. ĐƯA RA KẾT LUẬN CUỐI CÙNG
     printf("\r\n🔍 KET LUAN:\r\n");
     if (matched && targetCfg != NULL)
     {
@@ -459,19 +515,34 @@ void irAnalyzeRaw(const IR_RawData_t* rawData)
         printf(" -> KHONG THUOC GIAO THUC DA DINH NGHIA (Remote La)\r\n");
     }
 
-    // 5. LUÔN LUÔN GỢI Ý CẤU TRÚC (Dành cho việc vọc vạch, clone hoặc tạo profile mới)
+    // 5. LUÔN LUÔN GỢI Ý CẤU TRÚC (Bổ sung gợi ý cấu hình bitOrder và Data chuỗi Hex)
     printf("\r\n🛠️ STRUCT SUGGEST:\r\n");
-    printf("  .totalBits = %u\r\n", (unsigned int)totalBits);
-    printf("  .leader    = {.mark = %u, .space = %u}\r\n", (unsigned int)actMark, (unsigned int)actSpace);
+    printf("  .totalBits   = %u\r\n", (unsigned int)totalBits);
+    printf("  .leader      = {.mark = %u, .space = %u}\r\n", (unsigned int)actMark, (unsigned int)actSpace);
 
     if (b0Count)
-        printf("  .bit0      = {.mark = %u, .space = %u}\r\n",
+        printf("  .bit0        = {.mark = %u, .space = %u}\r\n",
                (unsigned int)avgMark, (unsigned int)(avgBit0Space / b0Count));
     if (b1Count)
-        printf("  .bit1      = {.mark = %u, .space = %u}\r\n",
+        printf("  .bit1        = {.mark = %u, .space = %u}\r\n",
                (unsigned int)avgMark, (unsigned int)(avgBit1Space / b1Count));
 
-    printf("===========================\r\n\r\n");
+    printf("  .encodeType  = IR_ENCODE_DISTANCE\r\n");
+    printf("  .bitOrder    = %s\r\n", (matched && targetCfg != NULL && targetCfg->bitOrder == IR_ORDER_MSB_FIRST)
+                                          ? "IR_ORDER_MSB_FIRST"
+                                          : "IR_ORDER_LSB_FIRST");
+
+    // 6. IN THỬ DATA HEX GỢI Ý ĐỂ COPY NHANH
+    const uint8_t totalBytesNeeded = (totalBits + 7) / 8;
+    printf("\r\n📦 SUGGESTED HEX DATA (If you cloning code):\r\n");
+
+    printf("  -> If LSB-First (Common): 0x");
+    for (int b = 0; b < totalBytesNeeded; b++) printf("%02X", hexLSB[b]);
+
+    printf("\r\n  -> If MSB-First (Rare)  : 0x");
+    for (int b = 0; b < totalBytesNeeded; b++) printf("%02X", hexMSB[b]);
+
+    printf("\r\n===========================\r\n\r\n");
 }
 
 void irPrintResult(const IR_Data_t* irData)
