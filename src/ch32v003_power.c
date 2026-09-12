@@ -77,67 +77,108 @@ void enableWakeupPin(const uint8_t mcu_pin, const WakeupTrigger_t trigger)
 
 void sleepUltraLowPower(void)
 {
-    // Xóa bỏ tham số truyền vào Port cũ, thư viện tự lo!
-    // Sao lưu lại trạng thái bật/tắt clock hiện tại của toàn bộ ngoại vi
+    // =================================================================
+    // GIAI ĐOẠN 1: PRE-SLEEP (LƯU TRẠNG THÁI & XỬ LÝ CHÂN UNUSED)
+    // =================================================================
+
+    // 1.1. Lưu lại cấu hình Clock ngoại vi hiện tại
     apb1_clock_bak = RCC->APB1PCENR;
     apb2_clock_bak = RCC->APB2PCENR;
 
-    // Đợi bộ đệm SWIO đẩy hết dữ liệu chuỗi ký tự cũ ra màn hình máy tính [ch32fun]
+    // 1.2. Chờ UART/SWIO hoàn tất truyền dữ liệu
     delayMs(5);
 
-    // [BƯỚC 1]: Ngắt kết nối chân debug SWIO để triệt tiêu dòng rò phần cứng [ch32fun]
+    // 1.3. Vô hiệu hóa chân Debug SWIO (PD1) để tránh rò dòng qua WCH-Link
+    // Note: Bit 26 trong AFIO->PCFR1 ngắt kết nối SWD
     AFIO->PCFR1 |= (1 << 26);
 
-    // Tắt toàn bộ clock ngoại vi, CHỈ GIỮ LẠI khối AFIO và CÁC PORT chứa chân Wakeup đã cấu hình
+    // 1.4. Chỉ giữ Clock cho AFIO và các Port có ngắt EXTI
     RCC->APB1PCENR = 0;
-    RCC->APB2PCENR = wakeup_ports_mask;
+    RCC->APB2PCENR = wakeup_ports_mask | RCC_APB2Periph_AFIO;
 
-    // [BƯỚC 2]: Hạ tần số hệ thống về HSI 8MHz trực tiếp
+
+    // =================================================================
+    // GIAI ĐOẠN 2: HẠ TẦN SỐ HỆ THỐNG VỀ 31.25 KHZ & TẮT PLL
+    // =================================================================
+
+    // 2.1. Chuyển SYSCLK về HSI (24MHz)
     RCC->CFGR0 &= ~(RCC_SW);
     RCC->CFGR0 |= RCC_SW_HSI;
     while ((RCC->CFGR0 & RCC_SWS) != RCC_SWS_HSI)
-        RCC->CTLR &= ~(1 << 3); // Tắt bộ nhân tần PLL
+    {
+    }
 
-    // Cấu hình bộ chia AHB Prescaler lên mức tối đa (Chia 256 -> Tần số ngủ = 31.25 kHz)
-    RCC->CFGR0 &= ~(0xf << 4);
-    RCC->CFGR0 |= (0x0f << 4);
+    // 2.2. Tắt khối PLL (Bit 24 = PLLON)
+    RCC->CTLR &= ~(1 << 24);
+
+    // 2.3. Tắt SysTick Timer để không làm tỉnh giấc CPU mỗi 1ms
+    SysTick->CTLR &= ~1;
+
+    // 2.4. Chia AHB Prescaler cho 256 -> Core Clock = 24MHz / 256 = 93.75kHz 
+    // (Hoặc nếu HSI/2 = 12MHz / 256 = 46.87kHz / Tùy cấu hình HSI Prediv)
+    RCC->CFGR0 &= ~(0xF << 4);
+    RCC->CFGR0 |= (0x0F << 4); // AHB Prescaler /256
     __asm__("nop");
     __asm__("nop");
 
-    // [BƯỚC 3]: THỰC THI LỆNH NGỦ TIẾT KIỆM ĐIỆN CỰC HẠN
-    __asm__("wfi");
+    // 2.5. Xóa sạch cờ ngắt EXTI tồn đọng tránh bị gỡ ngủ tức thì
+    EXTI->INTFR = 0xFFFFFFFF;
+
 
     // =================================================================
-    // THỨC DẬY: Khi bạn nhấn nút bấm kích hoạt ngắt, chip chạy tiếp từ đây
+    // GIAI ĐOẠN 3: THỰC THI LỆNH NGỦ SLEEP (WFI)
     // =================================================================
 
-    // [BƯỚC 4]: Khôi phục tần số HSI 24MHz
-    RCC->CTLR |= (1 << 3);
+    // Đưa CPU vào chế độ Wait For Interrupt
+    __asm__ volatile("wfi");
 
-    // Trả bộ chia AHB Prescaler về 1 (Không chia)
-    RCC->CFGR0 &= ~(0xf << 4);
+
+    // =================================================================
+    // GIAI ĐOẠN 4: THỨC DẬY (WAKEUP) & KHÔI PHỤC TỐC ĐỘ CAO
+    // =================================================================
+
+    // 4.1. Trả bộ chia AHB Prescaler về 1 NGAY LẬP TỨC để CPU xử lý nhanh lệnh tiếp theo
+    RCC->CFGR0 &= ~(0xF << 4);
     __asm__("nop");
     __asm__("nop");
 
-    // Bật lại bộ nhân tần PLL lên tốc độ tối đa 48MHz ban đầu
+    // 4.2. Bật lại khối PLL
+    RCC->CTLR |= (1 << 24); // PLLON = 1
+    while (!(RCC->CTLR & (1 << 25)))
+    {
+    }
+    // Chờ PLL Ready (Lúc này CPU đã chạy nhanh nên chờ rất lẹ)
+
+    // 4.3. Chuyển nguồn SYSCLK trở lại dùng PLL (48MHz)
     RCC->CFGR0 &= ~(RCC_SW);
     RCC->CFGR0 |= RCC_SW_PLL;
     while ((RCC->CFGR0 & RCC_SWS) != RCC_SWS_PLL)
+    {
+    }
 
-        // Khôi phục lại toàn bộ xung clock ngoại vi ban đầu cho hệ thống hoạt động
-        RCC->APB1PCENR = apb1_clock_bak;
+    // 4.4. Bật lại SysTick
+    SysTick->CTLR |= 1;
+
+
+    // =================================================================
+    // GIAI ĐOẠN 5: KHÔI PHỤC NGOẠI VI & DEBUG SWIO
+    // =================================================================
+
+    // 5.1. Khôi phục Clock ngoại vi ban đầu
+    RCC->APB1PCENR = apb1_clock_bak;
     RCC->APB2PCENR = apb2_clock_bak;
 
-    // [BƯỚC 5]: Kích hoạt lại tính năng nạp/debug trên chân SWIO [ch32fun]
+    // 5.2. Mở lại chân Debug SWIO (PD1) để có thể nạp lại code bằng WCH-LinkE
     AFIO->PCFR1 &= ~(1 << 26);
 
-    // Trễ nhỏ để mạch nạp WCH-Link đồng bộ lại nhịp thở với chip [ch32fun]
+    // 5.3. Trễ ngắn đồng bộ giao tiếp SWD
     delayMs(10);
 }
 
 // ============================================================================
 // HÀM XỬ LÝ NGẮT PHẦN CỨNG HỢP NHẤT EXTI LINE 0 -> LINE 7 [ch32fun]
 // ============================================================================
+// ReSharper disable once CppUseInternalLinkage
 void EXTI7_0_IRQHandler(void) __attribute__((interrupt));
 
 void EXTI7_0_IRQHandler(void)
