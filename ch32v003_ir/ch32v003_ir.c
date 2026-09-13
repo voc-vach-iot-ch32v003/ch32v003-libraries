@@ -11,7 +11,7 @@
 // ============================================================================
 static const IR_ProtocolConfig_t irConfigs[] = {
 #if (IR_SUPPORT_NEC)
-    {
+{
         .protocol = IR_NEC,
         .name = "NEC",
         .carrierFreqHz = 38000,
@@ -26,7 +26,7 @@ static const IR_ProtocolConfig_t irConfigs[] = {
 #endif
 
 #if (IR_SUPPORT_SAMSUNG)
-    {
+{
         .protocol = IR_SAMSUNG,
         .name = "SAMSUNG",
         .carrierFreqHz = 38000,
@@ -41,7 +41,7 @@ static const IR_ProtocolConfig_t irConfigs[] = {
 #endif
 
 #if (IR_SUPPORT_SONY)
-    {
+{
         .protocol = IR_SONY,
         .name = "SONY",
         .carrierFreqHz = 40000,
@@ -55,7 +55,7 @@ static const IR_ProtocolConfig_t irConfigs[] = {
     },
 #endif
 #if (IR_SUPPORT_TCL)
-    {
+{
         .protocol = IR_TCL,
         .name = "TCL",
         .carrierFreqHz = 38000,
@@ -613,34 +613,22 @@ void irPrintResult(const IR_Data_t* irData)
 
 uint8_t irReadRaw(const uint8_t mcu_pin, IR_RawData_t* rawData)
 {
-    GPIO_TypeDef* GPIOx;
-    uint8_t pinNumber;
-    decodeHardwarePin(mcu_pin, &GPIOx, &pinNumber);
-    return irReadPortRaw(GPIOx, pinNumber, rawData);
+    return EXECUTE_ON_PIN_RET(mcu_pin, irReadPortRaw, rawData);
 }
 
 uint8_t irRead(const uint8_t mcu_pin, IR_Data_t* irData)
 {
-    GPIO_TypeDef* GPIOx;
-    uint8_t pinNumber;
-    decodeHardwarePin(mcu_pin, &GPIOx, &pinNumber);
-    return irReadPort(GPIOx, pinNumber, irData);
+    return EXECUTE_ON_PIN_RET(mcu_pin, irReadPort, irData);
 }
 
 void irSendRaw(const uint8_t mcu_pin, const IR_RawData_t* rawData)
 {
-    GPIO_TypeDef* GPIOx;
-    uint8_t pinNumber;
-    decodeHardwarePin(mcu_pin, &GPIOx, &pinNumber);
-    irSendPortRaw(GPIOx, pinNumber, rawData);
+    EXECUTE_ON_PIN(mcu_pin, irSendPortRaw, rawData);
 }
 
 void irSend(const uint8_t mcu_pin, const IR_Protocol_t protocol, const uint16_t address, const uint32_t command)
 {
-    GPIO_TypeDef* GPIOx;
-    uint8_t pinNumber;
-    decodeHardwarePin(mcu_pin, &GPIOx, &pinNumber);
-    irSendPort(GPIOx, pinNumber, protocol, address, command);
+    EXECUTE_ON_PIN(mcu_pin, irSendPort, protocol, address, command);
 }
 
 #endif // IR_ENABLE
