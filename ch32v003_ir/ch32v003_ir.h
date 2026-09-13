@@ -21,35 +21,35 @@
 
 /**
  * @brief Quét và lưu trữ dữ liệu xung thô từ tín hiệu hồng ngoại vào bộ đệm (Hàm chặn).
- * @param mcu_pin Chân vật lý MCU làm đầu vào thu hồng ngoại, chọn từ @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý MCU làm đầu vào thu hồng ngoại, chọn từ @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
  * @param rawData Con trỏ tới cấu trúc @ref IR_RawData_t để lưu kết quả độ rộng xung thô.
  * @return 1 nếu đã thu thập được dữ liệu thô thành công, 0 nếu không có tín hiệu hoặc bộ đệm đầy.
  */
-uint8_t irReadRaw(uint8_t mcu_pin, IR_RawData_t* rawData);
+uint8_t irReadRaw(uint8_t mcuPin, IR_RawData_t* rawData);
 
 /**
  * @brief Đọc và giải mã dữ liệu hồng ngoại trực tiếp từ chân vật lý chỉ định (Hàm chặn).
- * @param mcu_pin Chân vật lý MCU làm đầu vào thu hồng ngoại, chọn từ @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý MCU làm đầu vào thu hồng ngoại, chọn từ @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
  * @param irData Con trỏ tới cấu trúc @ref IR_Data_t để lưu thông tin sau giải mã.
  * @return 1 nếu nhận dạng và giải mã thành công, 0 nếu không có tín hiệu hoặc nhiễu.
  */
-uint8_t irRead(uint8_t mcu_pin, IR_Data_t* irData);
+uint8_t irRead(uint8_t mcuPin, IR_Data_t* irData);
 
 /**
  * @brief Phát tín hiệu hồng ngoại theo cấu trúc xung thô đã thu thập (Học lệnh) ra chân vật lý (Hàm chặn).
- * @param mcu_pin Chân vật lý MCU kết nối mạch đệm LED phát IR, chọn từ @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý MCU kết nối mạch đệm LED phát IR, chọn từ @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
  * @param rawData Con trỏ tới cấu trúc @ref IR_RawData_t chứa dữ liệu học lệnh thô.
  */
-void irSendRaw(uint8_t mcu_pin, const IR_RawData_t* rawData);
+void irSendRaw(uint8_t mcuPin, const IR_RawData_t* rawData);
 
 /**
  * @brief Phát tín hiệu điều khiển hồng ngoại theo giao thức chuẩn hóa ra chân vật lý MCU.
- * @param mcu_pin Chân vật lý MCU kết nối mạch đệm LED phát IR, chọn từ @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý MCU kết nối mạch đệm LED phát IR, chọn từ @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
  * @param protocol Tên giao thức cần phát chọn từ danh mục @ref IR_Protocol_t.
  * @param address Địa chỉ mã hóa của thiết bị cần điều khiển.
  * @param command Mã phím bấm / Lệnh chức năng cần truyền đi.
  */
-void irSend(uint8_t mcu_pin, IR_Protocol_t protocol, uint16_t address, uint32_t command);
+void irSend(uint8_t mcuPin, IR_Protocol_t protocol, uint16_t address, uint32_t command);
 
 // ============================================================================
 // HÀM ĐỘC LẬP THEO PORT THÔ GỐC (DÙNG ĐỂ CHẠY HẬU TRƯỜNG FILE .C)

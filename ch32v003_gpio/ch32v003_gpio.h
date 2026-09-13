@@ -18,33 +18,33 @@
 // ============================================================================
 
 /**
- * @brief Macro Helper tự động giải mã mcu_pin và thực thi hàm thao tác Port (Dùng cho hàm trả về void).
- * @param mcu_pin Chân vật lý MCU (Thuộc @ref MCUPin_t hoặc @ref MCUSpecialPin_t).
+ * @brief Macro Helper tự động giải mã mcuPin và thực thi hàm thao tác Port (Dùng cho hàm trả về void).
+ * @param mcuPin Chân vật lý MCU (Thuộc @ref MCUPin_t hoặc @ref MCUSpecialPin_t).
  * @param func Tên hàm xử lý cấp Port nhận tham số (GPIO_TypeDef*, uint8_t pinNumber, ...).
  * @param ... Các tham số phụ tùy chọn truyền thêm vào hàm `func` (nếu có).
  * @note Macro sử dụng khối lệnh `do { ... } while(0)` an toàn trong mọi ngữ cảnh điều kiện (if/else).
  */
-#define EXECUTE_ON_PIN(mcu_pin, func, ...) \
+#define EXECUTE_ON_PIN(mcuPin, func, ...) \
     do { \
         GPIO_TypeDef* _GPIOx; \
         uint8_t _pinNumber; \
-        decodeHardwarePin((mcu_pin), &_GPIOx, &_pinNumber); \
+        decodeHardwarePin((mcuPin), &_GPIOx, &_pinNumber); \
         func(_GPIOx, _pinNumber, ##__VA_ARGS__); \
     } while(0)
 
 /**
- * @brief Macro Helper tự động giải mã mcu_pin, thực thi hàm thao tác Port và trả về kết quả (Dùng cho hàm có giá trị return).
- * @param mcu_pin Chân vật lý MCU (Thuộc @ref MCUPin_t hoặc @ref MCUSpecialPin_t).
+ * @brief Macro Helper tự động giải mã mcuPin, thực thi hàm thao tác Port và trả về kết quả (Dùng cho hàm có giá trị return).
+ * @param mcuPin Chân vật lý MCU (Thuộc @ref MCUPin_t hoặc @ref MCUSpecialPin_t).
  * @param func Tên hàm xử lý cấp Port nhận tham số (GPIO_TypeDef*, uint8_t pinNumber, ...) và có giá trị trả về.
  * @param ... Các tham số phụ tùy chọn truyền thêm vào hàm `func` (nếu có).
  * @return Giá trị trả về từ kết quả thực thi của hàm `func`.
  * @note Macro sử dụng cú pháp Statement Expression `({ ... })` mở rộng của GCC/Clang.
  */
-#define EXECUTE_ON_PIN_RET(mcu_pin, func, ...) \
+#define EXECUTE_ON_PIN_RET(mcuPin, func, ...) \
     ({ \
         GPIO_TypeDef* _GPIOx; \
         uint8_t _pinNumber; \
-        decodeHardwarePin((mcu_pin), &_GPIOx, &_pinNumber); \
+        decodeHardwarePin((mcuPin), &_GPIOx, &_pinNumber); \
         func(_GPIOx, _pinNumber, ##__VA_ARGS__); \
     })
 
@@ -64,39 +64,39 @@ void decodeHardwarePin(uint8_t mcuPin, GPIO_TypeDef** GPIOx, uint8_t* pinNumber)
 
 /**
  * @brief Cấu hình chế độ hoạt động cho chân vật lý MCU (Kiểu hàm Arduino).
- * @param mcu_pin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
  * @param mode Chế độ hoạt động mong muốn lấy từ cấu trúc danh mục @ref PinMode_t.
  */
-void pinMode(uint8_t mcu_pin, PinMode_t mode);
+void pinMode(uint8_t mcuPin, PinMode_t mode);
 
 /**
  * @brief Ghi mức logic HIGH hoặc LOW trực tiếp ra chân vật lý MCU.
- * @param mcu_pin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
  * @param state Trạng thái logic cần ghi truyền vào từ cấu trúc @ref DigitalState_t.
  */
-void digitalWrite(uint8_t mcu_pin, DigitalState_t state);
+void digitalWrite(uint8_t mcuPin, DigitalState_t state);
 
 /**
  * @brief Đảo ngược tức thời trạng thái logic hiện tại của chân vật lý MCU.
- * @param mcu_pin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
  */
-void digitalToggle(uint8_t mcu_pin);
+void digitalToggle(uint8_t mcuPin);
 
 /**
  * @brief Đọc giá trị mức logic hiện tại của chân vật lý được cấu hình làm đầu vào.
- * @param mcu_pin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
  * @return Mức logic hiện trạng đọc về từ thanh ghi cổng (Thuộc @ref DigitalState_t).
  */
-DigitalState_t digitalRead(uint8_t mcu_pin);
+DigitalState_t digitalRead(uint8_t mcuPin);
 
 // --- HỆ THỐNG CÁC HÀM QUẢN LÝ TIÊN TIẾN CHUYÊN DỤNG CHO CHÂN NẠP SWIO ---
 
 /**
  * @brief Thiết lập chế độ hoạt động trực tiếp cho chân nạp chương trình SWIO (PD1).
- * @param swio_mode Chế độ thiết lập được cấu hình dựa trên @ref SwioMode_t.
+ * @param swioMode Chế độ thiết lập được cấu hình dựa trên @ref SwioMode_t.
  * @warning Việc chuyển sang chế độ @ref SWIO_MODE_GPIO sẽ vô hiệu hóa tính năng nạp chương trình tạm thời cho đến khi chip được đặt lại hoặc cấu hình trả lại chế độ gỡ lỗi.
  */
-void setSwioMode(SwioMode_t swio_mode);
+void setSwioMode(SwioMode_t swioMode);
 
 /**
  * @brief Đọc trạng thái cấu hình hiện tại của chân gỡ lỗi / nạp chương trình SWIO (PD1).

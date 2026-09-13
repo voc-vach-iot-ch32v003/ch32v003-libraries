@@ -63,13 +63,13 @@ void enableWakeupPinPort(const GPIO_TypeDef* GPIOx, const uint8_t pinNumber, con
     __enable_irq();
 }
 
-void enableWakeupPin(const uint8_t mcu_pin, const WakeupTrigger_t trigger)
+void enableWakeupPin(const uint8_t mcuPin, const WakeupTrigger_t trigger)
 {
     // Chuyển đổi số chân vật lý thành Port và PinNumber
     GPIO_TypeDef* GPIOx = NULL;
     uint8_t pinNumber = 0;
 
-    decodeHardwarePin(mcu_pin, &GPIOx, &pinNumber);
+    decodeHardwarePin(mcuPin, &GPIOx, &pinNumber);
 
     // Gọi hàm cấu hình chân Wakeup theo Port và PinNumber đã xác định
     enableWakeupPinPort(GPIOx, pinNumber, trigger);
@@ -130,7 +130,8 @@ void sleepUltraLowPower(void)
     // =================================================================
 
     // Đưa CPU vào chế độ Wait For Interrupt
-    __asm__ volatile("wfi");
+    __asm__ volatile (
+    "wfi");
 
 
     // =================================================================

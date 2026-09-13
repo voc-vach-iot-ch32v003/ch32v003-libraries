@@ -19,10 +19,11 @@
 
 #if (POWER_ENABLE)
 
-typedef enum {
-  WAKEUP_FALLING = 0,
-  WAKEUP_RISING = 1,
-  WAKEUP_CHANGE = 2
+typedef enum
+{
+    WAKEUP_FALLING = 0,
+    WAKEUP_RISING = 1,
+    WAKEUP_CHANGE = 2
 } WakeupTrigger_t;
 
 // ============================================================================
@@ -38,7 +39,7 @@ typedef enum {
  * @param trigger Kiểu kích hoạt đánh thức: RISING, FALLING, hoặc CHANGE (cả 2
  * cạnh)
  */
-void enableWakeupPinPort(const GPIO_TypeDef *GPIOx, uint8_t pinNumber,
+void enableWakeupPinPort(const GPIO_TypeDef* GPIOx, uint8_t pinNumber,
                          WakeupTrigger_t trigger);
 
 /**
@@ -46,7 +47,7 @@ void enableWakeupPinPort(const GPIO_TypeDef *GPIOx, uint8_t pinNumber,
  * ngủ sâu.
  * @details Hàm tiện lợi cho người dùng không cần nhớ mã hóa Port và Line, chỉ
  * cần truyền số chân vật lý trên board và kiểu kích hoạt.
- * @param mcu_pin Chỉ số chân trên board (Chọn từ @ref MCUPin_t hoặc @ref
+ * @param mcuPin Chỉ số chân trên board (Chọn từ @ref MCUPin_t hoặc @ref
  * MCUSpecialPin_t) để làm chân Wakeup.
  * @param trigger Kiểu kích hoạt đánh thức: RISING, FALLING, hoặc CHANGE (cả 2
  * cạnh).
@@ -56,7 +57,7 @@ void enableWakeupPinPort(const GPIO_TypeDef *GPIOx, uint8_t pinNumber,
  * Vui lòng tham khảo tài liệu kỹ thuật của CH32V003 để biết danh sách chân hỗ
  * trợ ngắt ngoài.
  */
-void enableWakeupPin(uint8_t mcu_pin, WakeupTrigger_t trigger);
+void enableWakeupPin(uint8_t mcuPin, WakeupTrigger_t trigger);
 
 /**
  * @brief Chế độ ngủ nhẹ giữ RAM - Hạ xung nhịp (Dùng tốt cho cả 3 dòng J4M6,

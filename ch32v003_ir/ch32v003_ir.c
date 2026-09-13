@@ -611,24 +611,24 @@ void irPrintResult(const IR_Data_t* irData)
 // ĐỒNG BỘ CÁC HÀM ĐƠN CHÂN KIỂU CORE MỚI
 // ============================================================================
 
-uint8_t irReadRaw(const uint8_t mcu_pin, IR_RawData_t* rawData)
+uint8_t irReadRaw(const uint8_t mcuPin, IR_RawData_t* rawData)
 {
-    return EXECUTE_ON_PIN_RET(mcu_pin, irReadPortRaw, rawData);
+    return EXECUTE_ON_PIN_RET(mcuPin, irReadPortRaw, rawData);
 }
 
-uint8_t irRead(const uint8_t mcu_pin, IR_Data_t* irData)
+uint8_t irRead(const uint8_t mcuPin, IR_Data_t* irData)
 {
-    return EXECUTE_ON_PIN_RET(mcu_pin, irReadPort, irData);
+    return EXECUTE_ON_PIN_RET(mcuPin, irReadPort, irData);
 }
 
-void irSendRaw(const uint8_t mcu_pin, const IR_RawData_t* rawData)
+void irSendRaw(const uint8_t mcuPin, const IR_RawData_t* rawData)
 {
-    EXECUTE_ON_PIN(mcu_pin, irSendPortRaw, rawData);
+    EXECUTE_ON_PIN(mcuPin, irSendPortRaw, rawData);
 }
 
-void irSend(const uint8_t mcu_pin, const IR_Protocol_t protocol, const uint16_t address, const uint32_t command)
+void irSend(const uint8_t mcuPin, const IR_Protocol_t protocol, const uint16_t address, const uint32_t command)
 {
-    EXECUTE_ON_PIN(mcu_pin, irSendPort, protocol, address, command);
+    EXECUTE_ON_PIN(mcuPin, irSendPort, protocol, address, command);
 }
 
 #endif // IR_ENABLE
