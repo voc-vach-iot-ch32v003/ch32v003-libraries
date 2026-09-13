@@ -10,7 +10,11 @@
 #define CH32V003_DELAY_H
 
 #include "ch32fun.h"
+#if defined(__has_include)
+#if __has_include("sys_config.h")
 #include "sys_config.h"
+#endif
+#endif
 
 #if (DELAY_ARDUINO_STYLE_ENABLE)
 

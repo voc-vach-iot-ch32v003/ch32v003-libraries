@@ -1,0 +1,26 @@
+{
+  "name": "ch32v003_timer",
+  "version": "1.0.0",
+  "description": "Thư viện quản lý thời gian hệ thống không chặn (millis, micros, ticks, elapsedMs, elapsedUs) theo phong cách Arduino cho CH32V003 dựa trên SysTick.",
+  "keywords": [
+    "timer",
+    "millis",
+    "micros",
+    "sys-tick",
+    "non-blocking",
+    "ch32v003",
+    "ch32v003fun"
+  ],
+  "authors": [
+    {
+      "name": "Vọc Vạch IoT",
+      "maintainer": true
+    }
+  ],
+  "frameworks": ["ch32v003fun"],
+  "platforms": ["ch32v"],
+  "build": {
+    "flags": ["-I ."]
+  },
+  "dependencies": []
+}

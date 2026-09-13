@@ -1,124 +1,166 @@
-# CH32V003 Project Template for PlatformIO (ch32fun)
+# Thư Viện Dùng Chung Cho CH32V003 (PlatformIO & ch32v003fun)
 
-A lightweight, modular, and Arduino-like (`setup`/`loop`) project template for the ultra-low-cost **CH32V003** RISC-V
-MCU. Built on top of the ultra-fast **ch32fun** framework and optimized for **PlatformIO**.
+Bộ thư viện chia sẻ tập trung, thiết kế dạng module tối ưu theo phong cách Arduino (`setup`/`loop`) dành cho dòng vi
+điều khiển RISC-V **CH32V003**. Dự án được xây dựng trên nền tảng framework **ch32v003fun** và tối ưu cho mô hình quản
+lý thư viện tập trung trong **PlatformIO** (`lib_extra_dirs`).
 
-*Một dự án mẫu gọn nhẹ, kiến trúc module, hỗ trợ cấu trúc giống Arduino (`setup`/`loop`) dành cho dòng vi điều khiển
-RISC-V siêu rẻ **CH32V003**. Phát triển dựa trên framework **ch32fun** và tối ưu sẵn cho **PlatformIO**.*
+🔗 **Repository chính thức**: **[voc-vach-iot/ch32v003-libraries](https://github.com/voc-vach-iot/ch32v003-libraries)**
 
----
-
-## 🚀 Features (Tính năng nổi bật)
-
-- **PlatformIO Ready**: No complex toolchain setup. Just open with VS Code + PlatformIO and click Build/Upload.
-- **Arduino-style Workflow**: Simplified `setup()` and `loop()` structure in `main.c`.
-- **Anti-Brick Delay**: Built-in 5-second startup delay to ensure you can *always* re-flash the MCU, even if your code
-  reconfigures the SWIO pin.
-- **`ch32v003_gpio`**: Comprehensive GPIO control supporting multiple packages (J4M6, A4M6, F4P6). Includes single-pin
-  and full-port operations (`pinMode`, `pinModePort`, `digitalWrite/Read`).
-- **`ch32v003_delay` & `ch32v003_timer`**: Accurate timing wrappers (`delayMs`, `delayUs`, `ticks`, `micros`, `millis`,
-  `elapsedUs/Ms`).
-- **`ch32v003_debug`**: `printf` debugging directly over the 1-wire SWIO interface.
-- **`ch32v003_ir`**: Infrared remote control library supporting **NEC, Samsung, and Sony** protocols (transmit and
-  receive).
-- **`ch32v003_power`**: Low-power management utilities (wake-up pin registration, Standby/Sleep modes).
-- **Highly Configurable**: Optimize flash/RAM usage by enabling/disabling modules via `sys_config.h` and customizing
-  setups via `user_config.h`.
+> 📌 **Dự án mẫu đi kèm**: Kho thư viện này được thiết kế để kết hợp trực tiếp với template dự án thực thi tại:
+> 🔗 **[voc-vach-iot/ch32v003-template](https://github.com/voc-vach-iot/ch32v003-template)**
 
 ---
 
-## 📂 Project Structure (Cấu trúc thư mục)
+## 🚀 Các Thư Viện Hỗ Trợ
+
+* **`ch32v003_gpio`**: Tối ưu điều khiển GPIO cho các dòng đóng vỏ (J4M6 - SOP8, A4M6 - SOP16, F4P6 - TSSOP20). Hỗ trợ
+  thao tác từng pin hoặc cả Port (`pinMode`, `pinModePort`, `digitalWrite/Read`).
+* **`ch32v003_delay` & `ch32v003_timer**`: Thư viện quản lý thời gian chính xác (`delayMs`, `delayUs`, `ticks`,
+  `micros`, `millis`, `elapsedUs/Ms`).
+* **`ch32v003_debug`**: Hỗ trợ debug `printf` trực tiếp qua giao diện 1-wire SWIO.
+* **`ch32v003_ir`**: Thư viện phát và nhận thu hồng ngoại hỗ trợ đa giao thức (**NEC, Sony, Samsung, TCL**).
+* **`ch32v003_power`**: Quản lý các chế độ tiết kiệm năng lượng (Sleep/Standby) và đăng ký chân Wake-up.
+
+---
+
+## 📂 Cấu Trúc Kho Thư Viện Tập Trung
 
 ```text
-├── .pio/                  # PlatformIO internal build folder (auto-generated)
-├── include/               # Header files (.h)
-│   ├── funconfig.h        # ch32fun configuration
-│   ├── sys_config.h       # Enable/disable libraries & system parameters
-│   ├── user_config.h      # User hardware pin definitions & macros
-│   ├── ch32v003_debug.h   # SWIO printf debugging header
-│   ├── ch32v003_delay.h   # Delay wrappers header
-│   ├── ch32v003_gpio.h    # Pin & Port manipulation header
-│   ├── ch32v003_timer.h   # System ticks & counters header
-│   ├── ch32v003_ir.h      # IR Tx/Rx header
-│   └── ch32v003_power.h   # Sleep & Standby header
-├── src/                   # Source files (.c)
-│   ├── main.c             # Application entry point (setup/loop)
-│   ├── ch32v003_delay.c   # Delay wrappers implementation
-│   ├── ch32v003_gpio.c    # Pin & Port manipulation implementation
-│   ├── ch32v003_timer.c   # System ticks & counters implementation
-│   ├── ch32v003_ir.c      # IR Tx/Rx implementation
-│   └── ch32v003_power.c   # Sleep & Standby implementation
-├── platformio.ini         # PlatformIO configuration file
-├── LICENSE                # MIT License
-└── README.md              # This documentation
+/mnt/learning/programing-language/code/iot/libraries/ch32v003/
+├── ch32v003_debug/        # Module debug printf qua SWIO
+│   ├── library.json
+│   ├── ch32v003_debug.c
+│   └── ch32v003_debug.h
+├── ch32v003_delay/        # Các hàm delay microsecond & millisecond
+│   ├── library.json
+│   ├── ch32v003_delay.c
+│   └── ch32v003_delay.h
+├── ch32v003_gpio/         # Thao tác GPIO & ánh xạ chân MCU theo package vỏ
+│   ├── library.json
+│   ├── ch32v003_gpio.c
+│   └── ch32v003_gpio.h
+├── ch32v003_ir/           # Driver thu/phát IR (NEC, Sony, Samsung, TCL)
+│   ├── library.json
+│   ├── ch32v003_ir.c
+│   └── ch32v003_ir.h
+├── ch32v003_power/        # Quản lý nguồn (Sleep, Standby, Wakeup)
+│   ├── library.json
+│   ├── ch32v003_power.c
+│   └── ch32v003_power.h
+├── ch32v003_timer/        # Bộ đếm thời gian hệ thống (millis/micros)
+│   ├── library.json
+│   ├── ch32v003_timer.c
+│   └── ch32v003_timer.h
+├── LICENSE                # Giấy phép MIT
+└── README.md              # Tài liệu hướng dẫn
+
 ```
 
 ---
 
-## 🛠️ Getting Started (Hướng dẫn bắt đầu)
+## ⚙️ Cơ Chế Tương Tác Giữa Template & Thư Viện
 
-### Prerequisite (Yêu cầu hệ thống)
+Kho thư viện tập trung tự động thẩm thấu cấu hình phần cứng và tính năng được định nghĩa trong
+repo [ch32v003-template](https://github.com/voc-vach-iot/ch32v003-template) thông qua chỉ thị preprocessor
+`__has_include`:
 
-1. Install [VS Code](https://visualstudio.com).
-2. Install the **PlatformIO IDE** extension inside VS Code.
-3. Connect your **WCH-LinkE** (or minichlink-compatible programmer) to the CH32V003 chip.
+### 1. File Cấu Hình Tại Template (`include/`)
 
-### Configuration (Cấu hình)
+* **`funconfig.h`**: Cấu hình phần cứng gốc của framework `ch32v003fun` (xung nhịp SysTick HCLK 48MHz, bật debug
+  `printf` qua 1-wire SWIO).
+* **`sys_config.h`**: Quản lý bật/tắt (1/0) các driver như `DELAY`, `TIMER`, `IR`, `POWER` để tối ưu dung lượng bộ nhớ
+  Flash theo từng dự án.
+* **`user_config.h`**: Định nghĩa sơ đồ chân phần cứng cụ thể cho từng mạch ứng dụng.
 
-1. Open `include/sys_config.h` to enable/disable the modules you need to save Flash memory.
-2. Open `include/user_config.h` to define your specific target board layout (`CH32V003_J4M6`, `CH32V003_A4M6`, or
-   `CH32V003_F4P6`) and map your custom functional pins.
+### 2. File Mã Nguồn Dự Án (`src/main.c`)
 
-### Code Example (`src/main.c`)
+Mã nguồn tại ứng dụng được tổ chức chuẩn theo phong cách Arduino (`setup`/`loop`), tích hợp sẵn cơ chế chống brick chip
+khi nạp qua SWIO:
 
 ```c
-#include "ch32fun.h"
-#include "ch32v003_delay.h"
-#include "ch32v003_gpio.h"
-#include "ch32v003_debug.h"
+#include "ch32v003fun.h"
+#include <ch32v003_gpio.h>
+#include <ch32v003_delay.h>
+#include <ch32v003_debug.h>
 
-#define LED_PIN  MCU_PIN3 // Depend on your user_config.h target board
+#define LED_PIN MCU_PIN3 // Tự động nhận diện theo cờ -DCH32V003_xxx trong platformio.ini
 
-void setup()
-{
+void setup() {
     pinMode(LED_PIN, OUTPUT);
-    printf("System initialized!\n");
+    printf("Chay thu nghiem thu vien tap trung!\n");
 }
 
-void loop()
-{
+void loop() {
     digitalWrite(LED_PIN, HIGH);
     delayMs(1000);
     digitalWrite(LED_PIN, LOW);
     delayMs(1000);
 }
 
-int main()
-{
+int main() {
     SystemInit(); 
-    delayMs(5000); // CRITICAL: Always wait 5s for minichlink to catch connection before user loop.
+    delayMs(5000); // LƯU Ý: Chờ 5s giúp chống brick chip khi re-flash qua SWIO
     setup();
-    while (1)
-    {
+    while (1) {
         loop();
     }
 }
+
 ```
-
-### Build & Flash (Biên dịch và Nạp)
-
-- **Build**: Click the ✔ (Checkmark) icon on the PlatformIO bottom status bar.
-- **Upload**: Click the ➔ (Right arrow) icon to flash using `minichlink`.
-- **Serial Monitor**: Click the 🔌 (Plug) icon to read `printf` data from SWIO.
 
 ---
 
-## 📜 License
+## 🛠️ Hướng Dẫn Tích Hợp Chi Tiết
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+### Cấu hình `platformio.ini` tại dự án thực thi
 
-## 🤝 Acknowledgments
+Khai báo đường dẫn tương đối trỏ về thư mục kho thư viện tập trung bằng thuộc tính `lib_extra_dirs` và liên kết thư viện
+bằng `lib_deps`:
 
-Special thanks to Charles Lohr ([@cnlohr](https://github.com/cnlohr/ch32fun)) and the Community for creating the
-incredible **ch32fun**
-framework.
+```ini
+[platformio]
+# Dòng này quyết định xem mặc định khi nhấn nút Build/Upload thì con chip nào sẽ chạy
+default_envs = CH32V003J4M6
+
+# Cấu hình chung cho cả 3 con chip để tránh lặp lại code (DRY)
+[env]
+platform = ch32v
+framework = ch32v003fun
+upload_protocol = minichlink
+debug_tool = minichlink
+extra_scripts = ch32v003_extra_scripts.py
+lib_extra_dirs = ../../libraries/ch32v003/
+lib_ldf_mode = deep+
+lib_deps =
+    ch32v003_delay
+
+# 1. Cấu hình cho bản 8 chân (SOP8)
+[env:CH32V003J4M6]
+board = genericCH32V003J4M6
+build_flags = -DCH32V003_J4M6
+
+# 2. Cấu hình cho bản 16 chân (SOP16)
+[env:CH32V003A4M6]
+board = genericCH32V003A4M6
+build_flags = -DCH32V003_A4M6
+
+# 3. Cấu hình cho bản 20 chân (TSSOP20)
+[env:CH32V003F4P6]
+board = genericCH32V003F4P6
+build_flags = -DCH32V003_F4P6
+
+```
+
+---
+
+## 📜 Giấy Phép (License)
+
+Dự án được phân phối dưới dạng **Giấy phép MIT** - xem file [LICENSE](https://www.google.com/search?q=LICENSE) để biết
+thêm chi tiết.
+
+## 🤝 Lời Cảm Ơn
+
+Trân trọng gửi lời cảm ơn đến Charles Lohr ([@cnlohr](https://github.com/cnlohr/ch32fun)) và cộng đồng đã phát triển
+framework **ch32v003fun** tuyệt vời.
+
+Xây dựng và phát triển bởi **Vọc Vạch IoT**.

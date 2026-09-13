@@ -1,0 +1,41 @@
+{
+  "name": "ch32v003_ir",
+  "version": "2.0.0",
+  "description": "Thư viện thu phát và giải mã tín hiệu hồng ngoại (IR) đa giao thức (NEC, Sony, Samsung, TCL) hỗ trợ học lệnh và phân tích tín hiệu cho CH32V003.",
+  "keywords": [
+    "ir",
+    "infrared",
+    "remote",
+    "nec",
+    "sony",
+    "samsung",
+    "tcl",
+    "ch32v003",
+    "ch32v003fun"
+  ],
+  "authors": [
+    {
+      "name": "Vọc Vạch IoT",
+      "maintainer": true
+    }
+  ],
+  "frameworks": ["ch32v003fun"],
+  "platforms": ["ch32v"],
+  "build": {
+    "flags": ["-I ."]
+  },
+  "dependencies": [
+    {
+      "name": "ch32v003_gpio"
+    },
+    {
+      "name": "ch32v003_delay"
+    },
+    {
+      "name": "ch32v003_timer"
+    },
+    {
+      "name": "ch32v003_debug"
+    }
+  ]
+}

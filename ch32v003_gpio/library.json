@@ -1,0 +1,25 @@
+{
+  "name": "ch32v003_gpio",
+  "version": "1.0.0",
+  "description": "Thư viện cấu hình và quản lý GPIO nâng cao cho vi điều khiển CH32V003 theo phong cách Arduino, hỗ trợ ánh xạ chân vật lý và quản lý chân nạp SWIO.",
+  "keywords": [
+    "gpio",
+    "ch32v003",
+    "ch32v003fun",
+    "pinmode",
+    "digitalwrite",
+    "swio"
+  ],
+  "authors": [
+    {
+      "name": "Vọc Vạch IoT",
+      "maintainer": true
+    }
+  ],
+  "frameworks": ["ch32v003fun"],
+  "platforms": ["ch32v"],
+  "build": {
+    "flags": ["-I ."]
+  },
+  "dependencies": []
+}
