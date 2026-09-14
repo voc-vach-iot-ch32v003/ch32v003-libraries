@@ -1,0 +1,42 @@
+{
+    "name": "ch32v003_led_matrix",
+    "version": "1.0.0",
+    "description": "Thư viện điều khiển hệ thống LED Matrix 8x8 lớp đồ họa (Frame Buffer, Font 5x7, Bresenham Line, Rotation) cho vi điều khiển CH32V003.",
+    "keywords": [
+        "led-matrix",
+        "graphics",
+        "font",
+        "max7219",
+        "display",
+        "ch32v003",
+        "ch32v003fun"
+    ],
+    "authors": [
+        {
+            "name": "Vọc Vạch IoT",
+            "maintainer": true
+        }
+    ],
+    "frameworks": [
+        "ch32v003fun"
+    ],
+    "platforms": [
+        "ch32v"
+    ],
+    "build": {
+        "flags": [
+            "-I ."
+        ]
+    },
+    "dependencies": [
+        {
+            "name": "ch32v003_gpio"
+        },
+        {
+            "name": "ch32v003_spi"
+        },
+        {
+            "name": "ch32v003_max7219"
+        }
+    ]
+}
