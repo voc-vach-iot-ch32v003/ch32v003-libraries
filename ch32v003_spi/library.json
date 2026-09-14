@@ -1,0 +1,35 @@
+{
+    "name": "ch32v003_spi",
+    "version": "1.0.0",
+    "description": "Thư viện điều khiển Hardware SPI1 nâng cao cho CH32V003 hỗ trợ tự động nhận diện và cấu hình Remap chân thích ứng theo các chuẩn đóng gói chip (SOP8, SOP16, TSSOP20).",
+    "keywords": [
+        "spi",
+        "hardware-spi",
+        "spi1",
+        "remap",
+        "ch32v003",
+        "ch32v003fun"
+    ],
+    "authors": [
+        {
+            "name": "Vọc Vạch IoT",
+            "maintainer": true
+        }
+    ],
+    "frameworks": [
+        "ch32v003fun"
+    ],
+    "platforms": [
+        "ch32v"
+    ],
+    "build": {
+        "flags": [
+            "-I ."
+        ]
+    },
+    "dependencies": [
+        {
+            "name": "ch32v003_gpio"
+        }
+    ]
+}
