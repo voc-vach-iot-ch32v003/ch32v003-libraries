@@ -16,20 +16,9 @@
 #include "sys_config.h"
 #endif
 #endif
+#include "ch32v003_power_types.h"
 
 #if (POWER_ENABLE)
-
-typedef enum
-{
-    WAKEUP_FALLING = 0,
-    WAKEUP_RISING = 1,
-    WAKEUP_CHANGE = 2
-} WakeupTrigger_t;
-
-// ============================================================================
-// KHAI BÁO CÁC HÀM CHỨC NĂNG CHÍNH
-// ============================================================================
-
 /**
  * @brief Cấu hình một chân GPIO bất kỳ làm chân Wakeup để đánh thức chip khi
  * ngủ sâu.
