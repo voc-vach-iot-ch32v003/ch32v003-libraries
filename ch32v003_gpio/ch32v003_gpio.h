@@ -19,7 +19,7 @@
 
 /**
  * @brief Macro Helper tự động giải mã mcuPin và thực thi hàm thao tác Port (Dùng cho hàm trả về void).
- * @param mcuPin Chân vật lý MCU (Thuộc @ref MCUPin_t hoặc @ref MCUSpecialPin_t).
+ * @param mcuPin Chân vật lý MCU (Thuộc @ref MCU_Pin_t hoặc @ref MCU_SpecialPin_t).
  * @param func Tên hàm xử lý cấp Port nhận tham số (GPIO_TypeDef*, uint8_t pinNumber, ...).
  * @param ... Các tham số phụ tùy chọn truyền thêm vào hàm `func` (nếu có).
  * @note Macro sử dụng khối lệnh `do { ... } while(0)` an toàn trong mọi ngữ cảnh điều kiện (if/else).
@@ -34,7 +34,7 @@
 
 /**
  * @brief Macro Helper tự động giải mã mcuPin, thực thi hàm thao tác Port và trả về kết quả (Dùng cho hàm có giá trị return).
- * @param mcuPin Chân vật lý MCU (Thuộc @ref MCUPin_t hoặc @ref MCUSpecialPin_t).
+ * @param mcuPin Chân vật lý MCU (Thuộc @ref MCU_Pin_t hoặc @ref MCU_SpecialPin_t).
  * @param func Tên hàm xử lý cấp Port nhận tham số (GPIO_TypeDef*, uint8_t pinNumber, ...) và có giá trị trả về.
  * @param ... Các tham số phụ tùy chọn truyền thêm vào hàm `func` (nếu có).
  * @return Giá trị trả về từ kết quả thực thi của hàm `func`.
@@ -58,33 +58,33 @@
  * @param mcuPin Chân vật lý được mã hóa theo cấu trúc (Port << 4) | PinNumber.
  * @param GPIOx Pointer trả về con trỏ quản lý vùng nhớ Port GPIO tương ứng (GPIOA, GPIOC, GPIOD).
  * @param pinNumber Giá trị trả về số thứ tự bit của chân trong Port (0-7) được giải mã từ mcuPin.
- * @warning Hàm này chỉ giải mã chân vật lý được định nghĩa trong @ref MCUPin_t hoặc @ref MCUSpecialPin_t
+ * @warning Hàm này chỉ giải mã chân vật lý được định nghĩa trong @ref MCU_Pin_t hoặc @ref MCU_SpecialPin_t
  */
 void decodeHardwarePin(uint8_t mcuPin, GPIO_TypeDef** GPIOx, uint8_t* pinNumber);
 
 /**
  * @brief Cấu hình chế độ hoạt động cho chân vật lý MCU (Kiểu hàm Arduino).
- * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCU_Pin_t hoặc @ref MCU_SpecialPin_t.
  * @param mode Chế độ hoạt động mong muốn lấy từ cấu trúc danh mục @ref PinMode_t.
  */
 void pinMode(uint8_t mcuPin, PinMode_t mode);
 
 /**
  * @brief Ghi mức logic HIGH hoặc LOW trực tiếp ra chân vật lý MCU.
- * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCU_Pin_t hoặc @ref MCU_SpecialPin_t.
  * @param state Trạng thái logic cần ghi truyền vào từ cấu trúc @ref DigitalState_t.
  */
 void digitalWrite(uint8_t mcuPin, DigitalState_t state);
 
 /**
  * @brief Đảo ngược tức thời trạng thái logic hiện tại của chân vật lý MCU.
- * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCU_SpecialPin_t.
  */
 void digitalToggle(uint8_t mcuPin);
 
 /**
  * @brief Đọc giá trị mức logic hiện tại của chân vật lý được cấu hình làm đầu vào.
- * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCUSpecialPin_t.
+ * @param mcuPin Chân vật lý được chọn từ bảng mã hóa @ref MCUPin_t hoặc @ref MCU_SpecialPin_t.
  * @return Mức logic hiện trạng đọc về từ thanh ghi cổng (Thuộc @ref DigitalState_t).
  */
 DigitalState_t digitalRead(uint8_t mcuPin);

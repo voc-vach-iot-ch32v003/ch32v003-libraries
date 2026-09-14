@@ -47,8 +47,8 @@ void enableWakeupPinPort(const GPIO_TypeDef* GPIOx, uint8_t pinNumber,
  * ngủ sâu.
  * @details Hàm tiện lợi cho người dùng không cần nhớ mã hóa Port và Line, chỉ
  * cần truyền số chân vật lý trên board và kiểu kích hoạt.
- * @param mcuPin Chỉ số chân trên board (Chọn từ @ref MCUPin_t hoặc @ref
- * MCUSpecialPin_t) để làm chân Wakeup.
+ * @param mcuPin Chỉ số chân trên board (Chọn từ @ref MCU_Pin_t hoặc @ref
+ * MCU_SpecialPin_t) để làm chân Wakeup.
  * @param trigger Kiểu kích hoạt đánh thức: RISING, FALLING, hoặc CHANGE (cả 2
  * cạnh).
  * @warning Chỉ những chân vật lý có hỗ trợ ngắt ngoài (GPIOA0-7, GPIOC0-7,
