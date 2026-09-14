@@ -6,6 +6,11 @@ void pinModePort(GPIO_TypeDef* GPIOx, const uint8_t pinNumber, const PinMode_t m
     if (GPIOx == GPIOA)
     {
         RCC->APB2PCENR |= RCC_APB2Periph_GPIOA;
+        if (pinNumber == 1 || pinNumber == 2)
+        {
+            RCC->APB2PCENR |= RCC_APB2Periph_AFIO; // Bật clock AFIO
+            AFIO->PCFR1 &= ~(1 << 15); // Tắt thạch anh ngoài để nhường PA1/PA2 cho GPIO
+        }
     }
     else if (GPIOx == GPIOC)
     {
@@ -79,34 +84,22 @@ void decodeHardwarePin(const uint8_t mcuPin, GPIO_TypeDef** GPIOx, uint8_t* pinN
 
 void pinMode(const uint8_t mcuPin, const PinMode_t mode)
 {
-    GPIO_TypeDef* GPIOx;
-    uint8_t pinNumber;
-    decodeHardwarePin(mcuPin, &GPIOx, &pinNumber);
-    pinModePort(GPIOx, pinNumber, mode);
+    EXECUTE_ON_PIN(mcuPin, pinModePort, mode);
 }
 
 void digitalWrite(const uint8_t mcuPin, const DigitalState_t state)
 {
-    GPIO_TypeDef* GPIOx;
-    uint8_t pinNumber;
-    decodeHardwarePin(mcuPin, &GPIOx, &pinNumber);
-    digitalWritePort(GPIOx, pinNumber, (uint8_t)state);
+    EXECUTE_ON_PIN(mcuPin, digitalWritePort, state);
 }
 
 void digitalToggle(const uint8_t mcuPin)
 {
-    GPIO_TypeDef* GPIOx;
-    uint8_t pinNumber;
-    decodeHardwarePin(mcuPin, &GPIOx, &pinNumber);
-    digitalTogglePort(GPIOx, pinNumber);
+    EXECUTE_ON_PIN(mcuPin, digitalTogglePort);
 }
 
 DigitalState_t digitalRead(const uint8_t mcuPin)
 {
-    GPIO_TypeDef* GPIOx;
-    uint8_t pinNumber;
-    decodeHardwarePin(mcuPin, &GPIOx, &pinNumber);
-    return (digitalReadPort(GPIOx, pinNumber) == 0) ? LOW : HIGH;
+    return EXECUTE_ON_PIN_RET(mcuPin, digitalReadPort) == 0 ? LOW : HIGH;
 }
 
 // Xử lý quản lý cấu hình các thanh ghi remap cho chân SWIO
