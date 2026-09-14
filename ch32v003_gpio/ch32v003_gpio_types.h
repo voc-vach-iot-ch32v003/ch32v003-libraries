@@ -2,7 +2,7 @@
  * @file ch32v003_gpio_types.h
  * @author Vọc Vạch IoT
  * @brief Định nghĩa các kiểu dữ liệu, enum trạng thái logic và chế độ hoạt động cho GPIO CH32V003.
- * @version 2.0
+ * @version 2.0.0
  * @date 2026-06-07
  */
 

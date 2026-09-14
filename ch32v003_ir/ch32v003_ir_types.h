@@ -2,7 +2,7 @@
  * @file ch32v003_ir_types.h
  * @author Vọc Vạch IoT
  * @brief Định nghĩa các enum, struct và kiểu dữ liệu quản lý giao thức hồng ngoại.
- * @version 2.0
+ * @version 2.0.0
  * @date 2026-06-07
  */
 

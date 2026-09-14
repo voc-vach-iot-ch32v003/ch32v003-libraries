@@ -2,7 +2,7 @@
 * @file ch32v003_delay.h
  * @author Vọc Vạch IoT
  * @brief Thư viện bọc các hàm tạo độ trễ (Delay) theo phong cách Arduino cho CH32V003.
- * @version 1.0
+ * @version 1.0.0
  * @date 2026-05-26
  */
 

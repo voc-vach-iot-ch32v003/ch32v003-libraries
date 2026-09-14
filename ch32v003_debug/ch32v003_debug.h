@@ -2,7 +2,7 @@
 * @file ch32v003_debug.h
  * @author Vọc Vạch IoT
  * @brief Thư viện cấu hình và quản lý tính năng gỡ lỗi (Debug Printf) qua chân nạp cho CH32V003.
- * @version 1.0
+ * @version 1.0.0
  * @date 2026-05-26
  */
 

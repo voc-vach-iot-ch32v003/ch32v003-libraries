@@ -2,7 +2,7 @@
  * @file ch32v003_gpio.h
  * @author Vọc Vạch IoT
  * @brief Thư viện cấu hình GPIO nâng cao cho CH32V003 (J4M6, A4M6, F4P6) hỗ trợ kiểu Arduino.
- * @version 2.0
+ * @version 2.0.0
  * @date 2026-06-07
  */
 

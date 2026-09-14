@@ -2,7 +2,7 @@
  * @file ch32v003_ir.h
  * @author Vọc Vạch IoT
  * @brief Thư viện thu phát hồng ngoại đa giao thức (NEC, Sony, Samsung) cho CH32V003.
- * @version 2.0
+ * @version 2.0.0
  * @date 2026-06-07
  */
 

@@ -3,7 +3,7 @@
  * @author Vọc Vạch IoT
  * @brief Thư viện quản lý thời gian hệ thống không chặn (Non-blocking) cho
  * CH32V003.
- * @version 1.0
+ * @version 1.0.0
  * @date 2026-05-26
  */
 

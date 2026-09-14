@@ -2,7 +2,7 @@
 * @file ch32v003_ir_defs.h
  * @author Vọc Vạch IoT
  * @brief Định nghĩa các macro cấu hình hệ thống, ngưỡng thời gian và tham số biên dịch cho thư viện IR.
- * @version 2.0
+ * @version 2.0.0
  * @date 2026-06-07
  */
 #ifndef CH32V003_IR_DEFS_H

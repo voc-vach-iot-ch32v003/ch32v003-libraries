@@ -2,7 +2,7 @@
 * @file ch32v003_power_types.h
  * @author Vọc Vạch IoT
  * @brief Định nghĩa các enum và kiểu dữ liệu liên quan đến quản lý năng lượng cho CH32V003.
- * @version 2.0
+ * @version 2.0.0
  * @date 2026-06-07
  */
 
