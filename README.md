@@ -1,153 +1,113 @@
-# Thư Viện Dùng Chung Cho CH32V003 (PlatformIO & ch32v003fun)
+# Bộ Thư Viện Dùng Chung Cho CH32V003 (PlatformIO & ch32v003fun)
 
-Bộ thư viện chia sẻ tập trung, thiết kế dạng module tối ưu theo phong cách Arduino (`setup`/`loop`) dành cho dòng vi
-điều khiển RISC-V **CH32V003**. Dự án được xây dựng trên nền tảng framework **ch32v003fun** và tối ưu cho mô hình quản
-lý thư viện tập trung trong **PlatformIO** (`lib_extra_dirs`).
+Kho lưu trữ tổng hợp các thư viện driver và module phần cứng được thiết kế tối ưu theo phong cách Arduino (`setup`/`loop`) dành cho vi điều khiển RISC-V **CH32V003**. Dự án xây dựng trên nền tảng framework **ch32v003fun** và quản lý theo mô hình **Git Submodules** giúp linh hoạt trong việc tích hợp tập trung hoặc kéo độc lập từng thư viện qua URL.
 
-🔗 **Repository chính thức**: **[voc-vach-iot/ch32v003-libraries](https://github.com/voc-vach-iot/ch32v003-libraries)**
+🔗 **Organization GitHub chính thức**: **[voc-vach-iot-ch32v003](https://github.com/voc-vach-iot-ch32v003)**  
+🔗 **Repository tổng hợp (Mono-repo)**: **[voc-vach-iot-ch32v003/ch32v003-libraries](https://github.com/voc-vach-iot-ch32v003/ch32v003-libraries)**
 
-> 📌 **Dự án mẫu đi kèm**: Kho thư viện này được thiết kế để kết hợp trực tiếp với template dự án thực thi tại:
-> 🔗 **[voc-vach-iot/ch32v003-template](https://github.com/voc-vach-iot/ch32v003-template)**
-
----
-
-## 🚀 Các Thư Viện Hỗ Trợ
-
-* **`ch32v003_gpio`**: Tối ưu điều khiển GPIO cho các dòng đóng vỏ (J4M6 - SOP8, A4M6 - SOP16, F4P6 - TSSOP20). Hỗ trợ
-  thao tác từng pin hoặc cả Port (`pinMode`, `pinModePort`, `digitalWrite/Read`).
-* **`ch32v003_delay` & `ch32v003_timer**`: Thư viện quản lý thời gian chính xác (`delayMs`, `delayUs`, `ticks`,
-  `micros`, `millis`, `elapsedUs/Ms`).
-* **`ch32v003_debug`**: Hỗ trợ debug `printf` trực tiếp qua giao diện 1-wire SWIO.
-* **`ch32v003_ir`**: Thư viện phát và nhận thu hồng ngoại hỗ trợ đa giao thức (**NEC, Sony, Samsung, TCL**).
-* **`ch32v003_power`**: Quản lý các chế độ tiết kiệm năng lượng (Sleep/Standby) và đăng ký chân Wake-up.
+> 📌 **Dự án mẫu đi kèm**: Kho thư viện này được thiết kế để kết hợp trực tiếp với template dự án tại:  
+> 🔗 **[voc-vach-iot-ch32v003/ch32v003-template](https://github.com/voc-vach-iot-ch32v003/ch32v003-template)**
 
 ---
 
-## 📂 Cấu Trúc Kho Thư Viện Tập Trung
+## 🚀 Danh Sách Thư Viện (Submodules)
+
+Mỗi thư viện bên dưới được quản lý dưới dạng một Submodule độc lập. Chi tiết về API, sơ đồ đấu nối và ví dụ sử dụng được trình bày tại `README.md` riêng trong từng thư mục submodule:
+
+| Module Thư Viện           | Mô Tả Tóm Tắt                                                 | Repository Độc Lập                                                                  |
+| :------------------------ | :------------------------------------------------------------ | :---------------------------------------------------------------------------------- |
+| **`ch32v003_gpio`**       | Điều khiển GPIO & Port cho các package (SOP8, SOP16, TSSOP20) | [ch32v003_gpio](https://github.com/voc-vach-iot-ch32v003/ch32v003_gpio)             |
+| **`ch32v003_delay`**      | Tạo trễ chính xác Microsecond & Millisecond                   | [ch32v003_delay](https://github.com/voc-vach-iot-ch32v003/ch32v003_delay)           |
+| **`ch32v003_timer`**      | Bộ đếm thời gian hệ thống (`millis`, `micros`, `elapsed`)     | [ch32v003_timer](https://github.com/voc-vach-iot-ch32v003/ch32v003_timer)           |
+| **`ch32v003_debug`**      | Debug `printf` trực tiếp qua 1-wire SWIO                      | [ch32v003_debug](https://github.com/voc-vach-iot-ch32v003/ch32v003_debug)           |
+| **`ch32v003_power`**      | Quản lý chế độ tiết kiệm điện (Sleep, Standby) & Wakeup       | [ch32v003_power](https://github.com/voc-vach-iot-ch32v003/ch32v003_power)           |
+| **`ch32v003_spi`**        | Driver giao tiếp Bus SPI phần cứng                            | [ch32v003_spi](https://github.com/voc-vach-iot-ch32v003/ch32v003_spi)               |
+| **`ch32v003_max7219`**    | Driver điều khiển IC quét LED MAX7219 qua SPI                 | [ch32v003_max7219](https://github.com/voc-vach-iot-ch32v003/ch32v003_max7219)       |
+| **`ch32v003_led_matrix`** | Quản lý lớp đồ họa LED Matrix (Frame Buffer, Font 5x7, Line)  | [ch32v003_led_matrix](https://github.com/voc-vach-iot-ch32v003/ch32v003_led_matrix) |
+| **`ch32v003_ir`**         | Thu/phát và giải mã tín hiệu IR (NEC, Sony, Samsung, TCL)     | [ch32v003_ir](https://github.com/voc-vach-iot-ch32v003/ch32v003_ir)                 |
+
+---
+
+## 📂 Cấu Trúc Repository
 
 ```text
-/mnt/learning/programing-language/code/iot/libraries/ch32v003/
-├── ch32v003_debug/        # Module debug printf qua SWIO
-│   ├── library.json
-│   ├── ch32v003_debug.c
-│   └── ch32v003_debug.h
-├── ch32v003_delay/        # Các hàm delay microsecond & millisecond
-│   ├── library.json
-│   ├── ch32v003_delay.c
-│   └── ch32v003_delay.h
-├── ch32v003_gpio/         # Thao tác GPIO & ánh xạ chân MCU theo package vỏ
-│   ├── library.json
-│   ├── ch32v003_gpio.c
-│   └── ch32v003_gpio.h
-├── ch32v003_ir/           # Driver thu/phát IR (NEC, Sony, Samsung, TCL)
-│   ├── library.json
-│   ├── ch32v003_ir.c
-│   └── ch32v003_ir.h
-├── ch32v003_power/        # Quản lý nguồn (Sleep, Standby, Wakeup)
-│   ├── library.json
-│   ├── ch32v003_power.c
-│   └── ch32v003_power.h
-├── ch32v003_timer/        # Bộ đếm thời gian hệ thống (millis/micros)
-│   ├── library.json
-│   ├── ch32v003_timer.c
-│   └── ch32v003_timer.h
-├── LICENSE                # Giấy phép MIT
-└── README.md              # Tài liệu hướng dẫn
+ch32v003-libraries/
+├── ch32v003_debug/       # [Submodule] Debug printf qua SWIO
+├── ch32v003_delay/       # [Submodule] Hàm delay us & ms
+├── ch32v003_gpio/        # [Submodule] Thao tác GPIO & ánh xạ pin
+├── ch32v003_ir/          # [Submodule] Thu/phát IR đa giao thức
+├── ch32v003_led_matrix/  # [Submodule] Tầng đồ họa LED Matrix
+├── ch32v003_max7219/     # [Submodule] Driver IC MAX7219
+├── ch32v003_power/       # [Submodule] Quản lý nguồn & Sleep mode
+├── ch32v003_spi/         # [Submodule] Giao tiếp SPI phần cứng
+├── ch32v003_timer/       # [Submodule] Bộ đếm thời gian SysTick
+├── .gitmodules           # Cấu hình liên kết Submodules
+├── LICENSE               # Giấy phép MIT
+└── README.md             # Tài liệu tổng quan dự án
 
 ```
 
 ---
 
-## ⚙️ Cơ Chế Tương Tác Giữa Template & Thư Viện
+## 📥 Hướng Dẫn Clone Repository (Kèm Submodules)
 
-Kho thư viện tập trung tự động thẩm thấu cấu hình phần cứng và tính năng được định nghĩa trong
-repo [ch32v003-template](https://github.com/voc-vach-iot/ch32v003-template) thông qua chỉ thị preprocessor
-`__has_include`:
+Nếu bạn muốn quản lý tất cả các thư viện cục bộ tại máy cá nhân:
 
-### 1. File Cấu Hình Tại Template (`include/`)
+```bash
+# Clone toàn bộ repo cùng tất cả các submodules
+git clone --recursive [https://github.com/voc-vach-iot-ch32v003/ch32v003-libraries.git](https://github.com/voc-vach-iot-ch32v003/ch32v003-libraries.git)
 
-* **`funconfig.h`**: Cấu hình phần cứng gốc của framework `ch32v003fun` (xung nhịp SysTick HCLK 48MHz, bật debug
-  `printf` qua 1-wire SWIO).
-* **`sys_config.h`**: Quản lý bật/tắt (1/0) các driver như `DELAY`, `TIMER`, `IR`, `POWER` để tối ưu dung lượng bộ nhớ
-  Flash theo từng dự án.
-* **`user_config.h`**: Định nghĩa sơ đồ chân phần cứng cụ thể cho từng mạch ứng dụng.
-
-### 2. File Mã Nguồn Dự Án (`src/main.c`)
-
-Mã nguồn tại ứng dụng được tổ chức chuẩn theo phong cách Arduino (`setup`/`loop`), tích hợp sẵn cơ chế chống brick chip
-khi nạp qua SWIO:
-
-```c
-#include "ch32v003fun.h"
-#include <ch32v003_gpio.h>
-#include <ch32v003_delay.h>
-#include <ch32v003_debug.h>
-
-#define LED_PIN MCU_PIN3 // Tự động nhận diện theo cờ -DCH32V003_xxx trong platformio.ini
-
-void setup() {
-    pinMode(LED_PIN, OUTPUT);
-    printf("Chay thu nghiem thu vien tap trung!\n");
-}
-
-void loop() {
-    digitalWrite(LED_PIN, HIGH);
-    delayMs(1000);
-    digitalWrite(LED_PIN, LOW);
-    delayMs(1000);
-}
-
-int main() {
-    SystemInit(); 
-    delayMs(5000); // LƯU Ý: Chờ 5s giúp chống brick chip khi re-flash qua SWIO
-    setup();
-    while (1) {
-        loop();
-    }
-}
+# Nếu lỡ clone thông thường, chạy lệnh sau để cập nhật submodules
+git submodule update --init --recursive
 
 ```
 
 ---
 
-## 🛠️ Hướng Dẫn Tích Hợp Chi Tiết
+## 🛠️ Hướng Dẫn Tích Hợp Vào Dự Án PlatformIO
 
-### Cấu hình `platformio.ini` tại dự án thực thi
+Bạn có thể sử dụng bộ thư viện theo **2 cách**:
 
-Khai báo đường dẫn tương đối trỏ về thư mục kho thư viện tập trung bằng thuộc tính `lib_extra_dirs` và liên kết thư viện
-bằng `lib_deps`:
+### Cách 1: Sử dụng URL Git trực tiếp qua `lib_deps` (Khuyên dùng cho dự án độc lập)
+
+Không cần clone toàn bộ kho thư viện về máy, PlatformIO sẽ tự động tải các thư viện cần thiết từ GitHub về dự án khi biên dịch:
 
 ```ini
-[platformio]
-# Dòng này quyết định xem mặc định khi nhấn nút Build/Upload thì con chip nào sẽ chạy
-default_envs = CH32V003J4M6
+[env:ch32v003_power_manager]
+extends = _base_ch32v003
+board = genericCH32V003J4M6
+build_src_filter = -<*> +<ch32v003/*.c>
+build_flags = -D CH32V003_J4M6
 
-# Cấu hình chung cho cả 3 con chip để tránh lặp lại code (DRY)
+# Khai báo trực tiếp Git URL của các thư viện độc lập
+lib_deps =
+    https://github.com/voc-vach-iot-ch32v003/ch32v003_delay.git
+    https://github.com/voc-vach-iot-ch32v003/ch32v003_gpio.git
+    https://github.com/voc-vach-iot-ch32v003/ch32v003_debug.git
+    https://github.com/voc-vach-iot-ch32v003/ch32v003_power.git
+
+```
+
+### Cách 2: Trỏ thư mục cục bộ qua `lib_extra_dirs` (Dành cho làm việc Offline / Monorepo)
+
+Khi làm việc với kho mã nguồn tập trung (đã clone toàn bộ về máy):
+
+```ini
 [env]
 platform = ch32v
 framework = ch32v003fun
 upload_protocol = minichlink
 debug_tool = minichlink
-extra_scripts = ch32v003_extra_scripts.py
-lib_extra_dirs = ../../libraries/ch32v003/
+
+# Trỏ tới thư mục chứa bộ thư viện tập trung
+lib_extra_dirs = ../../libraries/ch32v003-libraries/
 lib_ldf_mode = deep+
+
+# Khai báo tên thư viện sử dụng
 lib_deps =
+    ch32v003_gpio
     ch32v003_delay
-
-# 1. Cấu hình cho bản 8 chân (SOP8)
-[env:CH32V003J4M6]
-board = genericCH32V003J4M6
-build_flags = -DCH32V003_J4M6
-
-# 2. Cấu hình cho bản 16 chân (SOP16)
-[env:CH32V003A4M6]
-board = genericCH32V003A4M6
-build_flags = -DCH32V003_A4M6
-
-# 3. Cấu hình cho bản 20 chân (TSSOP20)
-[env:CH32V003F4P6]
-board = genericCH32V003F4P6
-build_flags = -DCH32V003_F4P6
+    ch32v003_power
 
 ```
 
@@ -155,12 +115,10 @@ build_flags = -DCH32V003_F4P6
 
 ## 📜 Giấy Phép (License)
 
-Dự án được phân phối dưới dạng **Giấy phép MIT** - xem file [LICENSE](https://www.google.com/search?q=LICENSE) để biết
-thêm chi tiết.
+Dự án được phân phối dưới dạng **Giấy phép MIT** - xem file [LICENSE](https://www.google.com/search?q=LICENSE) để biết thêm chi tiết.
 
 ## 🤝 Lời Cảm Ơn
 
-Trân trọng gửi lời cảm ơn đến Charles Lohr ([@cnlohr](https://github.com/cnlohr/ch32fun)) và cộng đồng đã phát triển
-framework **ch32v003fun** tuyệt vời.
+Trân trọng gửi lời cảm ơn đến Charles Lohr ([@cnlohr](https://github.com/cnlohr/ch32fun)) và cộng đồng đã phát triển framework **ch32v003fun**.
 
-Xây dựng và phát triển bởi **Vọc Vạch IoT**.
+---

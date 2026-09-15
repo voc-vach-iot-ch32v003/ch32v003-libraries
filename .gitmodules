@@ -1,0 +1,27 @@
+[submodule "ch32v003_debug"]
+	path = ch32v003_debug
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_debug.git
+[submodule "ch32v003_delay"]
+	path = ch32v003_delay
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_delay.git
+[submodule "ch32v003_gpio"]
+	path = ch32v003_gpio
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_gpio.git
+[submodule "ch32v003_ir"]
+	path = ch32v003_ir
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_ir.git
+[submodule "ch32v003_led_matrix"]
+	path = ch32v003_led_matrix
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_led_matrix.git
+[submodule "ch32v003_max7219"]
+	path = ch32v003_max7219
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_max7219.git
+[submodule "ch32v003_power"]
+	path = ch32v003_power
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_power.git
+[submodule "ch32v003_spi"]
+	path = ch32v003_spi
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_spi.git
+[submodule "ch32v003_timer"]
+	path = ch32v003_timer
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_timer.git
