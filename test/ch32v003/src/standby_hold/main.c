@@ -12,6 +12,7 @@
 //   2. Sau cửa sổ nạp 1 giây giữ mãi một trạng thái (chọn bằng HOLD_MODE lúc build):
 //      0 = Standby, chỉ thức bằng chân PA2 (LSI tắt) | 1 = Sleep | 2 = chạy liên tục 48MHz
 //      3 = Standby thức bằng hẹn giờ 30s rồi ngủ lại ngay (LSI + AWU chạy)
+//      4 = như 0 nhưng mọi chân để Input thả nổi (đo chi phí của chân thả nổi so với ANALOG)
 //   3. Kéo PA2 xuống GND (ESP32: OFF PA2) -> chip thức và chạy liên tục (đối chứng dòng lúc thức).
 
 #define WAKE_PIN ((MCU_PORT_INDEX_A << 4) | 2) // PA2 (CH11)
@@ -28,6 +29,9 @@
 #elif HOLD_MODE == 3
 #define HOLD_ENTER powerStandby
 #define HOLD_NAME "Standby (hen gio 30s)"
+#elif HOLD_MODE == 4
+#define HOLD_ENTER powerStandby
+#define HOLD_NAME "Standby (chan tha noi)"
 #else
 #define HOLD_ENTER powerStandby
 #define HOLD_NAME "Standby"
@@ -50,9 +54,11 @@ int main(void)
     setPort(GPIOD, INPUT);
     delayMs(1000); // Cửa sổ nạp
 
+#if HOLD_MODE != 4
     setPort(GPIOA, ANALOG);
     setPort(GPIOC, ANALOG);
     setPort(GPIOD, ANALOG);
+#endif
 
     printf("HIL:STANDBY_HOLD giu trang thai " HOLD_NAME "\n");
     delayMs(50); // Cho dòng printf truyền xong trước khi SWD tắt

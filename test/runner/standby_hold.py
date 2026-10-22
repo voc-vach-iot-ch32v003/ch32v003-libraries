@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Nạp firmware giữ một trạng thái (Standby / Sleep / chạy) vào chip để đo dòng tiêu thụ (máy đo Uno hoặc đo tay).
 
-    python3 test/runner/standby_hold.py [--chip J4M6] [--mode standby|sleep|run|standby_timer] [--port /dev/ttyUSB0]
+    python3 test/runner/standby_hold.py [--chip J4M6] [--mode standby|sleep|run|standby_timer|standby_float] [--port /dev/ttyUSB0]
 
 Đỗ 2 chip còn lại, nạp test/ch32v003/src/standby_hold/ vào chip cần đo, thả nổi 16 kênh của ESP32.
 Đo tay bằng trở + đồng hồ: CẮM jumper nối tắt trở lúc nạp (chip ăn vài mA), rút ra sau khi chip đã ngủ.
@@ -18,7 +18,7 @@ from hil import CHIPS, MINICHLINK, build, park, part_package
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--chip", default="J4M6", choices=CHIPS)
-    parser.add_argument("--mode", default="standby", choices=["standby", "sleep", "run", "standby_timer"])
+    parser.add_argument("--mode", default="standby", choices=["standby", "sleep", "run", "standby_timer", "standby_float"])
     parser.add_argument("--port", default="/dev/ttyUSB0")
     args = parser.parse_args()
 

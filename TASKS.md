@@ -126,8 +126,13 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ Máy đo dòng tự động bằng Arduino Uno (`test/uno_meter/`, `test/runner/meter.py`, `WIRING.md` mục 6): R2 22Ω (thang mA) + R1 10kΩ nối tắt bằng 8050 (thang µA), tham chiếu nội 1.1V, tự đổi thang. Suite `current` (J4M6): chạy 5.4mA, Standby thức bằng chân 8.1µA, thức bằng hẹn giờ 9.35µA (LSI + AWU +1.2µA), Sleep 390µA. Lặp lại ổn định giữa các lần chạy.
 - ✅ PD1 ở `ANALOG` làm mất `printf` qua SWIO đang chạy (vẫn nạp được) → v2.0.2: ví dụ 02 + README giữ PD1.
 - ✅ **Bug (v2.0.3):** chip đặt riêng (không cắm mạch nạp) với chân SWIO thả nổi → Standby bị đánh thức liên tục (xung mỗi ~15ms, 11.5µA). → Trong lúc ngủ thư viện bật Pull-up nội cho PD1 nếu PD1 đang là SWIO (bỏ qua nếu đã dùng làm GPIO, hoặc J4M6 đang lái PD4/PD5 output trên chân 8). Đo lại: 10.12µA ổn định không cần trở ngoài. HIL `power` 70/70 × 3 chip.
-- ⬜ Đo lại ngoài bàn ở 3.3V cho `run` / `sleep` / `standby` (lần đo giai đoạn 1–2 là ở 5V: run 4.90mA, sleep 416µA).
-- ⬜ Máy đo dòng bằng CH32V003 (A4M6) thay Uno: tụ 104 + OPA làm bộ so sánh + TIM2 capture (dải µA), trở 22Ω + ADC (dải mA), gửi kết quả UART → ESP32 GPIO35. Cần thư viện OPA + UART trước.
+- ✅ Đo ngoài bàn (J4M6 đặt riêng, Uno 3.3V, thư viện v2.0.3): chạy 3.87mA, Sleep 381µA, Standby hẹn giờ 10.43µA, Standby chỉ thức bằng chân 9.46µA. (Lần đo trước ở 5V: chạy 4.90mA, Sleep 416µA.)
+- ✅ Lần đo tay 6.7µA / ≥ 50µA không đáng tin: đồng hồ nhảy 0.066–0.4V do SWIO thả nổi đánh thức chip → v2.0.4 sửa tài liệu, bảng số đo đầy đủ.
+- ⬜ Đo chế độ `standby_float` (chân thả nổi) bằng Uno để có số thật cho khuyến cáo `ANALOG` (firmware `standby_hold.py --mode standby_float` đã có).
+- 🔧 Thử nghiệm máy đo bằng thời gian nạp tụ trên A4M6 (`test/ch32v003/src/cap_meter/`, `test/runner/cap_meter.py`): OPA hở vòng làm bộ so sánh (OPP0 PA2 = nút N, OPN0 PA1 = ngưỡng cầu 1.95MΩ/99.7kΩ), đếm SysTick tới khi OPO (PD4) lên, 8050 ở PC3 xả tụ. Hiệu chuẩn trở chuẩn 197.8kΩ → khớp 0.1%; thử trở chuẩn ‖ tụ 96.5nF → đúng mô hình I·C_đo/(C_đo + C_chip), C_đo thực 112.8nF (nút N có ~10nF), ngưỡng hiệu dụng 149.7mV (khớp đo tay). J4M6 Standby đo được 7.7µA (điện dung VDD–VSS của J4M6 đặt riêng ≈ 0) so với 9.5µA của Uno — **chưa giải thích được khoảng lệch 20%** trên chip thật.
+  - Bài học: phương pháp nạp tụ bị điện dung VDD–VSS của chip (tụ lọc 100nF trên mạch thật) làm đọc thấp → máy chính thức cần tụ đo ≥ 10µF hoặc đo 2 tụ để khử; đo áp trên trở không bị ảnh hưởng.
+  - Cần trở 10kΩ kéo PC3 lên 3V3 để 8050 dẫn khi A4M6 khởi động (nếu không chip được đo bị reset theo).
+  - Hoãn: làm máy đo chính thức khi viết thư viện tiết kiệm pin cho MCU khác (cần thư viện OPA + UART).
 
 ### `ch32v003_ir`
 - ⬜ **Bug:** `rawLen` kiểu `uint8_t` nhưng buffer 256 phần tử → tràn về 0.
