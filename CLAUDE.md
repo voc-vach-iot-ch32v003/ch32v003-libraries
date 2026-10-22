@@ -75,6 +75,8 @@ int main(void)
 
 "Xong" = code đúng template + README cập nhật (Quick Start qua `check_readme.py`) + test (host/HIL) ĐẠT trên cả 3 chip + `TASKS.md` đã ghi. Ngay khi xong, làm **lập tức, không chờ hỏi**, theo thứ tự:
 
+**Chỉ phát hành khi có thay đổi ảnh hưởng người dùng** (API, hành vi, sửa lỗi, hiệu năng, ví dụ/README có nội dung mới). Thay đổi chỉ là định dạng, chú thích, `.gitignore`... thì **chỉ commit + push + trỏ submodule, không bump version, không tag, không Release**.
+
 1. **Trong submodule `ch32v003_<lib>`:**
    - Bump `version` trong `library.json` theo SemVer (`embedded-library-release-core.md`): đổi/xóa API hoặc type → MAJOR; thêm API → MINOR; chỉ sửa lỗi/tối ưu → PATCH.
    - Commit (`feat(<lib>): ...` / `fix(<lib>): ...` / `refactor(<lib>): ...`, tiếng Việt), tag `v<version>`, push nhánh + tag.

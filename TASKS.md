@@ -31,11 +31,11 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 | Thư viện | Phiên bản | Ngày | Ghi chú |
 | :-- | :-- | :-- | :-- |
-| `ch32v003_delay` | v1.0.1 | 2026-10-22 | chuẩn hóa tài liệu |
-| `ch32v003_debug` | v1.0.1 | 2026-10-22 | chuẩn hóa tài liệu |
 | `ch32v003_intmath` | v1.0.1 | 2026-10-22 | sửa atan2/magnitude, cấu trúc `src/` |
 | `ch32v003_timer` | v1.1.0 | 2026-10-22 | sửa tràn 89s, `timerInit()`, `micros()` nhanh hơn |
 | `ch32v003_gpio` | v2.0.0 | 2026-10-22 | ⚠️ đổi tên type `GPIO_*_t`, `MCU_PIN_NONE` |
+
+`delay`, `debug` giữ v1.0.0: thay đổi chỉ là định dạng Doxygen + `.gitignore` → đã commit, không phát hành.
 
 ## Tầng 0
 
