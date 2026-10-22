@@ -1,4 +1,7 @@
-"""Máy đo dòng Arduino Uno (firmware test/uno_meter/): tự tìm cổng serial bằng lệnh PING."""
+"""Máy đo dòng Arduino Uno (firmware test/uno_meter/): tự tìm cổng serial bằng lệnh PING.
+
+    python3 test/runner/meter.py [số lần] [ms mỗi lần]   # đọc nhanh, không cần bàn test
+"""
 import glob
 import time
 
@@ -53,3 +56,16 @@ class Meter:
         """Trả về (µA, thang 'UA'|'MA', quá tải?)."""
         words = self.cmd(f"I {duration_ms} {mode}", timeout=duration_ms / 1000 + 3).split()
         return float(words[2]), words[3], words[-1] == "OVER"
+
+
+if __name__ == "__main__":
+    # Đọc nhanh: python3 test/runner/meter.py [số lần] [ms mỗi lần]
+    import sys
+
+    count = int(sys.argv[1]) if len(sys.argv) > 1 else 5
+    duration = int(sys.argv[2]) if len(sys.argv) > 2 else 1000
+    m = Meter()
+    print(f"Máy đo: {m.port} ({m.cmd('CAL')})")
+    for _ in range(count):
+        ua, scale, overload = m.current(duration)
+        print(f"{ua:10.2f} µA  thang {scale}{'  QUÁ TẢI' if overload else ''}")

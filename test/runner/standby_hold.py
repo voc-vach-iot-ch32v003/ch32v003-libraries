@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Nạp firmware giữ Standby vào một chip để đo tay dòng tiêu thụ (shunt 10kΩ ở chân GND + đồng hồ DCV).
+"""Nạp firmware giữ một trạng thái (Standby / Sleep / chạy) vào chip để đo dòng tiêu thụ (máy đo Uno hoặc đo tay).
 
-    python3 test/runner/standby_hold.py [--chip J4M6] [--mode standby|sleep] [--port /dev/ttyUSB0]
+    python3 test/runner/standby_hold.py [--chip J4M6] [--mode standby|sleep|run|standby_timer] [--port /dev/ttyUSB0]
 
 Đỗ 2 chip còn lại, nạp test/ch32v003/src/standby_hold/ vào chip cần đo, thả nổi 16 kênh của ESP32.
-Nhớ CẮM jumper nối tắt shunt trước khi chạy (chip ăn vài mA lúc nạp), rút ra sau khi chip đã vào Standby.
+Đo tay bằng trở + đồng hồ: CẮM jumper nối tắt trở lúc nạp (chip ăn vài mA), rút ra sau khi chip đã ngủ.
 Đánh thức để đối chứng: gửi "OFF PA2" cho ESP32 (hoặc chạm PA2 xuống GND).
 """
 import argparse
@@ -18,7 +18,7 @@ from hil import CHIPS, MINICHLINK, build, park, part_package
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--chip", default="J4M6", choices=CHIPS)
-    parser.add_argument("--mode", default="standby", choices=["standby", "sleep"])
+    parser.add_argument("--mode", default="standby", choices=["standby", "sleep", "run", "standby_timer"])
     parser.add_argument("--port", default="/dev/ttyUSB0")
     args = parser.parse_args()
 
@@ -39,7 +39,8 @@ def main():
         return 1
 
     bench.cmd("Z ALL")
-    print(f"Đã nạp {args.chip}: chip vào {args.mode} sau ~1 giây. Bây giờ rút jumper và đọc điện áp trên shunt (DCV).")
+    print(f"Đã nạp {args.chip}: chip giữ trạng thái '{args.mode}' sau ~1 giây kể từ lúc có nguồn. "
+          "Đo bằng máy đo Uno: python3 test/runner/meter.py")
     return 0
 
 

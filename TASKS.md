@@ -40,6 +40,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | `ch32v003_power` | v2.0.0 | 2026-10-22 | ⚠️ `powerSleep`/`powerStandby`, `POWER_*_t` (mcuPin), sửa hẹn giờ AWU + SWIO, chạy cả J4M6 |
 | `ch32v003_power` | v2.0.1 | 2026-10-22 | tài liệu: dòng đo thực tế (Standby 6.7µA, Sleep 371µA), chân không dùng về `ANALOG`, nạp lại chip đang ngủ |
 | `ch32v003_power` | v2.0.2 | 2026-10-22 | ví dụ 02 mất printf (PD1 ANALOG), chi phí hẹn giờ +1.2µA |
+| `ch32v003_power` | v2.0.3 | 2026-10-22 | kéo lên SWIO trong lúc ngủ: chân bỏ trống không còn đánh thức chip liên tục |
 
 `delay`, `debug` giữ v1.0.0: thay đổi chỉ là định dạng Doxygen + `.gitignore` → đã commit, không phát hành.
 `timer`: sửa chú thích `MCU_PIN3` trong README (PA2 chỉ đúng với J4M6; A4M6 là PC3, F4P6 là PD6) → commit, không phát hành.
@@ -124,6 +125,8 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ Thí nghiệm `test/runner/swio_probe.py` (J4M6): PD1, PD4+PD5, mọi chân về `ANALOG` → SWIO vẫn nạp được. Lần "khóa nạp" trước là do chip ngủ vĩnh viễn (SWD tắt) mà VDD không đi qua GPIO ESP32 nên không tắt/bật được nguồn; cứu bằng `rvprog -e` + cấp nguồn tay.
 - ✅ Máy đo dòng tự động bằng Arduino Uno (`test/uno_meter/`, `test/runner/meter.py`, `WIRING.md` mục 6): R2 22Ω (thang mA) + R1 10kΩ nối tắt bằng 8050 (thang µA), tham chiếu nội 1.1V, tự đổi thang. Suite `current` (J4M6): chạy 5.4mA, Standby thức bằng chân 8.1µA, thức bằng hẹn giờ 9.35µA (LSI + AWU +1.2µA), Sleep 390µA. Lặp lại ổn định giữa các lần chạy.
 - ✅ PD1 ở `ANALOG` làm mất `printf` qua SWIO đang chạy (vẫn nạp được) → v2.0.2: ví dụ 02 + README giữ PD1.
+- ✅ **Bug (v2.0.3):** chip đặt riêng (không cắm mạch nạp) với chân SWIO thả nổi → Standby bị đánh thức liên tục (xung mỗi ~15ms, 11.5µA). → Trong lúc ngủ thư viện bật Pull-up nội cho PD1 nếu PD1 đang là SWIO (bỏ qua nếu đã dùng làm GPIO, hoặc J4M6 đang lái PD4/PD5 output trên chân 8). Đo lại: 10.12µA ổn định không cần trở ngoài. HIL `power` 70/70 × 3 chip.
+- ⬜ Đo lại ngoài bàn ở 3.3V cho `run` / `sleep` / `standby` (lần đo giai đoạn 1–2 là ở 5V: run 4.90mA, sleep 416µA).
 - ⬜ Máy đo dòng bằng CH32V003 (A4M6) thay Uno: tụ 104 + OPA làm bộ so sánh + TIM2 capture (dải µA), trở 22Ω + ADC (dải mA), gửi kết quả UART → ESP32 GPIO35. Cần thư viện OPA + UART trước.
 
 ### `ch32v003_ir`
