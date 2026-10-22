@@ -4,6 +4,7 @@
 #include "bench_channels.h"
 #include "bench_i2c.h"
 #include "bench_spi.h"
+#include "bench_ir.h"
 
 // Firmware bàn test HIL: nhận lệnh văn bản qua Serial 115200, mỗi lệnh 1 dòng, trả lời 1 dòng "OK ..." / "ERR ...".
 // <ch> nhận số kênh (3), tên kênh (CH3) hoặc tên net (PD2).
@@ -31,6 +32,10 @@
 //   SPIS OFF                     -> tắt SPI slave
 //   SPIS LOAD <hex|->            -> nạp 1 giao dịch: dữ liệu đẩy ra MISO (tối đa 64 byte, '-' = toàn 0x00)
 //   SPIS RX [timeoutMs]          -> OK SPIS RX <số bit> <hex các byte master đã gửi> (ERR nếu giao dịch chưa xong)
+//   IRTX <ch> <NEC|SAMSUNG|SONY|TCL> <hex> [khung] -> phát khung IR đã giải điều chế như mắt thu (rảnh HIGH, Mark = LOW),
+//                                   bit 0 của byte đầu phát trước; khung > 1: NEC thêm mã lặp, SAMSUNG/SONY lặp nguyên khung
+//   IRCAP <ch> [timeoutMs] [gapUs] -> OK IRCAP <net> <Hz sóng mang> <duty %> <n> <mark> <space> <mark>... (us),
+//                                   bắt tín hiệu có sóng mang (rảnh LOW), dừng khi LOW quá gapUs (mặc định 20000)
 
 static const uint8_t MAX_WORDS = 6;
 static String lineBuffer;
@@ -358,6 +363,36 @@ static void cmdSpiSlave(const String* w)
 }
 
 // ============================================================================
+// HỒNG NGOẠI
+// ============================================================================
+
+static void cmdIrSend(const String& target, const String& protocol, const String& hex, const String& frames)
+{
+    const int ch = channelArg(target);
+    if (ch < 0) return;
+    uint8_t data[16];
+    const int n = parseHex(hex, data, sizeof(data));
+    if (n <= 0 || !benchIrSend(ch, protocol, data, n, frames.length() ? frames.toInt() : 1))
+    {
+        Serial.println("ERR IRTX <ch> <NEC|SAMSUNG|SONY|TCL> <hex đủ số bit> [khung]");
+        return;
+    }
+    Serial.printf("OK IRTX %s\n", BENCH_CHANNELS[ch].net);
+}
+
+static void cmdIrCapture(const String& target, const String& timeoutMs, const String& gapUs)
+{
+    const int ch = channelArg(target);
+    if (ch < 0) return;
+    uint32_t hz = 0, duty = 0;
+    const uint16_t n = benchIrCapture(ch, captureBuffer, BENCH_CAPTURE_MAX_EDGES, timeoutMs.length() ? timeoutMs.toInt() : 1000,
+                                      gapUs.length() ? gapUs.toInt() : 20000, hz, duty);
+    Serial.printf("OK IRCAP %s %lu %lu %u", BENCH_CHANNELS[ch].net, (unsigned long)hz, (unsigned long)duty, n);
+    for (uint16_t i = 0; i < n; i++) Serial.printf(" %lu", (unsigned long)captureBuffer[i]);
+    Serial.println();
+}
+
+// ============================================================================
 // BỘ PHÂN TÍCH LỆNH
 // ============================================================================
 
@@ -397,6 +432,8 @@ static void handleLine(String line)
     else if (cmd == "INTERVAL") cmdInterval(w[1], w[2]);
     else if (cmd == "I2CS") cmdI2cSlave(w[1], w[2], w[3]);
     else if (cmd == "SPIS") cmdSpiSlave(w);
+    else if (cmd == "IRTX") cmdIrSend(w[1], w[2], w[3], w[4]);
+    else if (cmd == "IRCAP") cmdIrCapture(w[1], w[2], w[3]);
     else Serial.printf("ERR unknown command '%s'\n", w[0].c_str());
 }
 

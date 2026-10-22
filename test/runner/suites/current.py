@@ -10,7 +10,7 @@ from meter import Meter
 CHIPS = ["J4M6"]
 TIMEOUT_S = 60
 
-# Khoảng chấp nhận (µA). Số đo tay tham chiếu trên J4M6: Standby 6.7µA, Sleep 371µA
+# Khoảng chấp nhận (µA). Số đo tham chiếu trên J4M6 ở 3.3V: Standby ~8–10µA, Sleep 381µA, chạy 3.87mA
 LIMITS = {
     "run": (1000, 10000),
     "standby_pin": (2, 20),

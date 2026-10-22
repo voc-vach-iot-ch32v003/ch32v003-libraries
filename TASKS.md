@@ -12,14 +12,14 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | 1 | `i2c` | gpio, debug |
 | 1 | `spi` | gpio |
 | 1 | `power` | gpio, delay |
-| 1 | `ir` | gpio, timer, debug |
+| 1 | `ir` | gpio, debug |
 | 2 | `max7219` | spi |
 | 2 | `bmi160` | i2c, intmath, delay, debug |
 | 3 | `led_matrix` | max7219 |
 
 ## Việc chung cho MỌI thư viện (checklist template)
 
-- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>" }` (hiện i2c, spi, max7219, led_matrix, bmi160, ir, power đang dùng mảng chuỗi URL).
+- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>" }` (còn max7219, led_matrix, bmi160 dùng mảng chuỗi URL; i2c, spi, power, ir đã chuyển).
 - [ ] `README.md` khớp API mới (8 mục theo `embedded-library-docs-core.md`).
 - [ ] Examples: chỉ driver/ngoại vi mới cần (đề xuất danh sách → chờ duyệt → tạo).
 - [ ] Bộ test HIL trong `test/ch32v003/src/<lib>/` + kịch bản ESP32.
@@ -134,18 +134,14 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
   - Cần trở 10kΩ kéo PC3 lên 3V3 để 8050 dẫn khi A4M6 khởi động (nếu không chip được đo bị reset theo).
   - Hoãn: làm máy đo chính thức khi viết thư viện tiết kiệm pin cho MCU khác (cần thư viện OPA + UART).
 
-### `ch32v003_ir`
-- ⬜ **Bug:** `rawLen` kiểu `uint8_t` nhưng buffer 256 phần tử → tràn về 0.
-- ⬜ **Bug:** đếm bit `(rawLen-2)/2` sai với giao thức không có stopMark → Sony không bao giờ giải mã được.
-- ⬜ **Bug:** `command = rawData[2] | rawData[3] << 16` (phải `<< 8`).
-- ⬜ **Bug:** `irSend` Sony đặt address vào bit thấp → chỉ phát address (12 bit = 7 command + 5 address).
-- ⬜ **Bug:** `irSend` TCL (76 bit) không xóa `tmp.rawData[6..9]` → phát rác từ stack.
-- ⬜ **Bug:** thiếu `IR_SUPPORT_*` trong `sys_config.h` → không giao thức nào được bật. → mặc định 1.
-- ⬜ NEC: encode/decode đối xứng (address/command 8-bit kèm byte đảo, hoặc 16-bit extended).
-- ⬜ **Tối ưu:** sóng mang tính theo mốc SysTick (không trôi), `IR_RAW_BUFFER_SIZE` mặc định 160 (đủ 76 bit TCL, tiết kiệm RAM — `irRead` cấp buffer trên stack 2KB RAM).
-- ⬜ Công khai `irDecodeRaw()` / `irSendData()`, `printBin8` → static.
-- ⬜ **Sai chân trong README:** `IR_TX_PIN MCU_PIN4` = **VDD** trên J4M6, NRST (PD7) trên F4P6.
-- 🧪 HIL: ESP32 phát khung NEC/Sony/Samsung đã giải điều chế → CH32 giải mã; CH32 phát → ESP32 bắt sườn, đo tần số sóng mang.
+### `ch32v003_ir` — ✅ v2.0.0 (HIL 27/27 × 3 chip)
+- ✅ ⚠️ **Breaking (đã duyệt):** NEC/Samsung trả `address`/`command` 8 bit khi byte đảo hợp lệ (16 bit nếu NEC mở rộng), Sony command 7 bit + address 5 bit; `irSend` nhận đúng quy ước đó → thu–phát đối xứng. `IR_RawData_t` dạng nén (bảng ≤ 16 độ dài + 4 bit/sườn, đọc bằng `irRawGetDuration()`), `rawLen` → `uint16_t`, bỏ `rawBuf[]`.
+- ✅ Học lệnh điều hòa: `IR_RAW_BUFFER_SIZE` 512 sườn (~290B, bản cũ 256 sườn = 514B), `IR_RAW_TIMEOUT_US` 50ms gom các khung nối nhau; `irRead` giữ `IR_TIMEOUT_US` 15ms (giữ nút Sony vẫn nhận từng khung; NEC khung → mã lặp nghỉ đúng 40.02ms nên tránh mốc 40ms).
+- ✅ Thêm `irDecodeRaw()`, `irRawGetDuration()`, `irSendData()`, `irSendRawCode()` (+ bản Port), kiểu `IR_RawCode_t` (lệnh trong Flash); `irAnalyzeRaw()` in câu khởi tạo C, tự nhận cách mã hóa (Distance/Width).
+- ✅ Sửa: `rawLen` tràn, đếm bit Sony, `<<16`, Sony phát sai bit, TCL phát rác stack, thiếu `IR_SUPPORT_*` (mặc định 1), `printBin8` lộ symbol.
+- ✅ Sóng mang canh mốc SysTick tuyệt đối (đo 38.33kHz / duty 49% trên F4P6 HSI nhanh 0.9%), Mark lệch trong ±½ chu kỳ (bản cũ dùng `delayUs(13)` + cắt chu kỳ → trôi tần số, Mark ngắn 1 chu kỳ). Bỏ phụ thuộc `delay`, `timer`.
+- ✅ README (Quick Start qua `check_readme.py`), 4 ví dụ (`01_receive_decode`, `02_send_protocol`, `03_learn_replay`, `04_send_learned_code`), chân ví dụ `MCU_PIN5` (thu) / `MCU_PIN6` (phát).
+- ✅ HIL (`test/runner/suites/ir.py`): ESP32 `IRTX` giả lập mắt thu trên PC4 (NEC, NEC mở rộng, NEC + mã lặp, Samsung, Sony ×1/×3, TCL), `IRCAP` bắt sóng mang trên PC1 so với khung chuẩn dựng từ đặc tả; học NEC + 11 khung Sony (285 sườn) rồi phát lại; phát từ Flash.
 
 ## Tầng 2
 
