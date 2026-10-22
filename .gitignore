@@ -8,4 +8,7 @@ test/HIL_SPEC.md
 
 # Kết quả chạy HIL (log, báo cáo JSON)
 test/runner/reports/
-__pycache__/.tmp/
+__pycache__/
+
+# Ảnh pinout tham khảo cục bộ
+.tmp/
