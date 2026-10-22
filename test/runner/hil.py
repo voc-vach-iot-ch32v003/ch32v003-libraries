@@ -13,6 +13,7 @@ import json
 import os
 import pty
 import select
+import signal
 import subprocess
 import sys
 import time
@@ -123,9 +124,11 @@ def run_on_chip(suite_name, suite, chip, bench, timeout_s):
                         ctx.check("nạp đúng chip", False, f"minichlink nhận {detected}")
                         finished = True
                         break
-                if not line.startswith("HIL:"):
+                # Sau khi chip bật lại SWD (VD: thức dậy từ chế độ ngủ) có thể dính vài byte rác trước "HIL:"
+                start = line.find("HIL:")
+                if start < 0:
                     continue
-                words = line[4:].split()
+                words = line[start + 4:].split()
                 kind, args = words[0], words[1:]
                 if kind == "WAIT":
                     # on_wait trả về chuỗi trả lời, hoặc (trả lời, hàm chạy SAU khi đã trả lời chip)
@@ -138,6 +141,12 @@ def run_on_chip(suite_name, suite, chip, bench, timeout_s):
                 elif kind == "CHECK":
                     ctx.check(args[0], args[1] == "PASS", " ".join(args[2:]), source="chip")
                 elif kind == "END":
+                    # Số check chip tự đếm phải khớp số dòng CHECK runner nhận được (phát hiện dòng bị mất)
+                    counts = dict(w.split("=") for w in args if "=" in w)
+                    seen = sum(1 for c in ctx.checks if c[3] == "chip")
+                    expected = int(counts.get("pass", 0)) + int(counts.get("fail", 0))
+                    if seen != expected:
+                        ctx.check("nhận đủ dòng CHECK của chip", False, f"chip báo {expected}, runner nhận {seen}")
                     finished = True
                 elif kind == "BEGIN":
                     print(f"  {line}")
@@ -150,9 +159,10 @@ def run_on_chip(suite_name, suite, chip, bench, timeout_s):
         except subprocess.TimeoutExpired:
             proc.kill()
         os.close(master)
+        # Luôn đỗ lại chip (kể cả khi lỗi / bị dừng): chip còn chạy firmware test sẽ lái các net dùng chung
+        park(bench, chip)
 
     ctx.data["log"] = log
-    park(bench, chip)
     return ctx
 
 
@@ -167,9 +177,15 @@ def main():
     chips = args.chip or getattr(suite, "CHIPS", CHIPS)
     timeout_s = getattr(suite, "TIMEOUT_S", 60)
 
+    # SIGTERM (VD: lệnh timeout) -> thoát qua finally để chip đang test vẫn được đỗ lại
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(1))
+
     bench = Bench(args.port)
     bench.cmd("PWR ALL ON")
-    time.sleep(1.5)  # để cả 3 chip đỗ xong
+    time.sleep(1.5)
+    # Lần chạy trước bị dừng giữa chừng có thể để lại chip chạy firmware test: đỗ cả 3 chip trước khi bắt đầu
+    for chip in CHIPS:
+        park(bench, chip)
 
     results = [run_on_chip(args.suite, suite, chip, bench, timeout_s) for chip in chips]
     bench.cmd("Z ALL")

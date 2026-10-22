@@ -54,7 +54,7 @@ int main(void)
 | Logic thuần trên máy tính | `test/host/run.sh` | gcc, không cần phần cứng (intmath...) |
 | Build mọi thư viện × 3 chip | `pio run -d test/ch32v003` | env `smoke_*`; build phải sạch warning của thư viện |
 | Kiểm tra bàn test | `$PY test/runner/bench_check.py` | ESP32 + WCH-LinkE + 3 chip |
-| Test HIL một thư viện | `$PY test/runner/hil.py <suite> [--chip F4P6 A4M6 J4M6]` | firmware `test/ch32v003/src/<suite>/` + kịch bản `test/runner/suites/<suite>.py`; suite hiện có: `gpio`, `timing`, `intmath`, `i2c`, `spi`, `timer_wrap` (~2 phút/chip) |
+| Test HIL một thư viện | `$PY test/runner/hil.py <suite> [--chip F4P6 A4M6 J4M6]` | firmware `test/ch32v003/src/<suite>/` + kịch bản `test/runner/suites/<suite>.py`; suite hiện có: `gpio`, `timing`, `intmath`, `i2c`, `spi`, `power` (~1 phút/chip), `timer_wrap` (~2 phút/chip) |
 | Code mẫu README biên dịch được | `$PY test/runner/check_readme.py <lib...>` | trích khối ```c ở mục Quick Start, build 3 chip |
 
 `$PY` = `/mnt/data/.system/environments/penv/bin/python` (python của PlatformIO, có sẵn `pyserial`). `minichlink` ở `~/.platformio/packages/tool-minichlink/minichlink`.
@@ -69,6 +69,8 @@ int main(void)
 - I2C slave của ESP32 (`I2CS`, CH13/CH14): ESP32 bản gốc **không kéo giãn SCL** → dữ liệu master sẽ đọc phải nạp trước bằng `I2CS LOAD`; `Z ALL` tự tắt slave.
 - SPI slave của ESP32 (`SPIS`): mỗi giao dịch (CS xuống-lên) phải `SPIS LOAD` trước. SPI1 phần cứng chỉ có trên F4P6 (PC5/PC6/PC7, CS PC0); SPI mềm test trên PC4/PA2/PA1, CS PC1 (có trên cả 3 chip).
 - Đo thời gian bằng `CAP`: sườn đầu tiên bị phát hiện trễ vài µs → đo khoảng ≥ 50µs, hoặc dùng `CAP ... NS` + trung vị nhiều chu kỳ.
+- Các net dùng chung cho cả 3 chip: chip nào còn chạy firmware test (runner bị dừng giữa chừng) sẽ lái net và làm sai phép đo. Runner đỗ cả 3 chip lúc bắt đầu; đừng giết runner bằng `kill -9`.
+- Firmware test tắt/bật lại SWD (VD: ngủ với `POWER_SLEEP_DISABLE_SWD`): chờ ~50ms trước khi in `HIL:` để dòng không bị rác SWIO làm mất.
 - Firmware test trên CH32 báo kết quả qua SWIO bằng dòng `HIL:...` (xem `test/ch32v003/include/hil.h`). Phép đo thời gian phải so theo **clock thật của từng chip** (HSI lệch tới ±2%): suite `timing` lấy `delayMs` làm thước đo.
 - Thêm suite mới: tạo `src/<suite>/main.c`, 3 env `<suite>_<chip>` trong `test/ch32v003/platformio.ini`, và `test/runner/suites/<suite>.py` có `on_wait(step, bench, ctx)`.
 
