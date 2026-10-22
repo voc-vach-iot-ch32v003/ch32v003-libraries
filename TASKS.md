@@ -35,9 +35,10 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | `ch32v003_timer` | v1.1.0 | 2026-10-22 | sửa tràn 89s, `timerInit()`, `micros()` nhanh hơn |
 | `ch32v003_gpio` | v2.0.0 | 2026-10-22 | ⚠️ đổi tên type `GPIO_*_t`, `MCU_PIN_NONE` |
 | `ch32v003_i2c` | v1.1.0 | 2026-10-22 | không kẹt bus khi NACK, Fast Mode, `i2cWriteBurst`, SW ~100kHz |
+| `ch32v003_gpio` | v2.0.1 | 2026-10-22 | ví dụ 03 toggle sai chân trên A4M6/F4P6, bảng chân theo gói vỏ |
 
 `delay`, `debug` giữ v1.0.0: thay đổi chỉ là định dạng Doxygen + `.gitignore` → đã commit, không phát hành.
-`timer`, `gpio`: sửa chú thích `MCU_PIN3` trong README (PA2 chỉ đúng với J4M6; A4M6 là PC3, F4P6 là PD6) → commit, không phát hành.
+`timer`: sửa chú thích `MCU_PIN3` trong README (PA2 chỉ đúng với J4M6; A4M6 là PC3, F4P6 là PD6) → commit, không phát hành.
 
 ## Tầng 0
 
@@ -63,6 +64,8 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ Thêm `MCU_PIN_NONE` (chuyển từ spi sang gpio để dùng chung).
 - ✅ Đặt tên macro cho bit AFIO (`GPIO_AFIO_PA12_REMAP`, `GPIO_AFIO_SWD_DISABLE`), `digitalReadPort` trả về `GPIO_DigitalState_t`, rút gọn `digitalRead`.
 - ✅ Sửa doc `@ref MCUPin_t`, chú thích `CHÂNMCU`.
+- ✅ (v2.0.1) Đối chiếu `ch32v003_gpio_pins.h` với pinout ch32fun (`.tmp/*.png`) + bảng remap RM: số chân, pad gộp J4M6, chức năng đều khớp. Thêm ghi chú chức năng nằm sẵn trên chân gộp J4M6 (chân 1 = PA1+PD6: URX/A6; chân 8 = SWIO+PD5+PD4: UTX/UCK/A5/A7/OPO) — không cần remap.
+- ✅ (v2.0.1) **Bug ví dụ 03:** `pinMode(MCU_PIN6)` nhưng toggle PC2 → chỉ đúng trên J4M6. Ví dụ 01/02 ghi "PA2/PC1 trên mọi gói vỏ" → bảng chân theo gói vỏ.
 - ✅ Example 01, 02 thiếu `platformio.ini` + `.gitignore` → đã thêm. README đã đổi tên type.
 - ✅ HIL `gpio` (2026-10-22): F4P6 142/142, A4M6 106/106, J4M6 44/44 — xuất/đọc/toggle, pull-up/down, cách ly giữa các net trên mọi chân của bàn test. (PC0 có trở kéo xuống của nút trên board TWEN → bỏ qua test pull-up PC0.)
 
@@ -104,6 +107,8 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ⬜ **Bug:** `LSI_FREQ_HZ 107092` là số đo của 1 con chip cụ thể → macro cấu hình `POWER_LSI_FREQUENCY_HZ` (mặc định 128000).
 - ⬜ **Bug:** thức dậy luôn xóa bit SWD → ghi đè `setSwioMode(SWIO_MODE_GPIO)` của người dùng. → Lưu/khôi phục SWCFG.
 - ⬜ `EXTI7_0_IRQHandler` chiếm cứng → `weak`.
+- ⬜ **Sai chân trong README/ví dụ:** Quick Start `LED_PIN MCU_PIN4` = **VDD** trên J4M6, NRST (PD7) trên F4P6. Ví dụ 01 config PC1/PC2 nhưng chú thích + README ghi PD0/PD6; ví dụ 02 README ghi PC0 rồi lại PD0.
+- ⬜ Kiểm tra lại "chân Wakeup phần cứng PD0" của Standby: CH32V003 đánh thức Standby qua EXTI (chân bất kỳ) / AWU, không có chân WKUP riêng — đối chiếu RM trước khi viết lại.
 - ⬜ ⚠️ **Breaking:** đổi tên theo template: `WakeupTrigger_t → POWER_WakeupTrigger_t`, `PowerWakeupConfig_t → POWER_WakeupConfiguration_t`, `PowerWakeupPin_t → POWER_WakeupPin_t` (dùng `mcuPin` thay `void* GPIOx`), `sleepUltraLowPower → powerSleep`, `enterStandbyMode → powerStandby`.
 - ⬜ README + library.json + 2 example hiện có.
 - 🧪 HIL: ESP32 đo thời gian ngủ/đánh thức qua chân, kích cạnh đánh thức.
@@ -118,6 +123,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ⬜ NEC: encode/decode đối xứng (address/command 8-bit kèm byte đảo, hoặc 16-bit extended).
 - ⬜ **Tối ưu:** sóng mang tính theo mốc SysTick (không trôi), `IR_RAW_BUFFER_SIZE` mặc định 160 (đủ 76 bit TCL, tiết kiệm RAM — `irRead` cấp buffer trên stack 2KB RAM).
 - ⬜ Công khai `irDecodeRaw()` / `irSendData()`, `printBin8` → static.
+- ⬜ **Sai chân trong README:** `IR_TX_PIN MCU_PIN4` = **VDD** trên J4M6, NRST (PD7) trên F4P6.
 - 🧪 HIL: ESP32 phát khung NEC/Sony/Samsung đã giải điều chế → CH32 giải mã; CH32 phát → ESP32 bắt sườn, đo tần số sóng mang.
 
 ## Tầng 2
@@ -148,6 +154,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ ⚠️ **Breaking:** `LedMatrix_t → LED_MATRIX_DriverHandle_t`, `MatrixRotation_t → LED_MATRIX_Rotation_t` (`LED_MATRIX_ROTATE_*`), `MatrixScrollDirection_t → LED_MATRIX_ScrollDirection_t` (`LED_MATRIX_SCROLL_*`), `ledMatrixInit(dev, spiHandle, csPin, buffer, count)`.
 - ⬜ README + library.json.
 - 🧪 HIL: bắt khung SPI, đối chiếu Frame Buffer.
+- ⬜ **Sai chân trong README:** `CS_PIN MCU_PIN7` = **VSS** trên F4P6, PD1/SWIO trên A4M6.
 
 ---
 

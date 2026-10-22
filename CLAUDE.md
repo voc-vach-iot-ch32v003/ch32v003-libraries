@@ -80,7 +80,7 @@ int main(void)
 
 1. **Trong submodule `ch32v003_<lib>`:**
    - Bump `version` trong `library.json` theo SemVer (`embedded-library-release-core.md`): đổi/xóa API hoặc type → MAJOR; thêm API → MINOR; chỉ sửa lỗi/tối ưu → PATCH.
-   - Commit (`feat(<lib>): ...` / `fix(<lib>): ...` / `refactor(<lib>): ...`, tiếng Việt), tag `v<version>`, push nhánh + tag.
+   - Commit (`feat(<lib>): ...` / `fix(<lib>): ...` / `refactor(<lib>): ...`, tiếng Việt), tag `v<version>`, push nhánh + **đúng tag đó** (`git push origin HEAD:main v<version>`, không dùng `--tags`).
    - Tạo GitHub Release: `gh release create v<version> --repo voc-vach-iot-ch32v003/ch32v003_<lib> --title "v<version> - <mô tả>" --notes-file <file>`, nội dung theo `embedded-library-release-core.md` (Breaking Changes có code cũ vs mới, New Features, Improvements, Bug Fixes, ngày `YYYY-MM-DD`).
 2. **Ở repo gốc:** `git add ch32v003_<lib>` (trỏ submodule tới commit mới) cùng các file test/tài liệu liên quan (`test/...`, `TASKS.md`, `CLAUDE.md`), commit `chore(<lib>): cập nhật submodule lên v<version>`, push.
 3. Báo lại người dùng: version, link release, kết quả test.
