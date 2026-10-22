@@ -71,7 +71,7 @@ Chân header TWEN32F003, đánh số từ phía Type-C:
 | GPIO22 | VDD A4M6 (chân 15) + tụ 100nF xuống chân 14 |
 | GPIO23 | VDD J4M6 (chân 4) + tụ 100nF xuống chân 2 |
 | ESP32 3V3 | Nửa phải hàng 17 mini `C` → 2 trở 4.7kΩ pull-up lên PC1, PC2 (tại chân J4M6) |
-| ESP32 GND | GND F4P6, A4M6 chân 14, J4M6 chân 2, GND WCH-LinkE |
+| ESP32 GND | GND F4P6, A4M6 chân 14, GND WCH-LinkE, GND Arduino Uno. **J4M6 chân 2 đi qua máy đo dòng** (mục 6) |
 | WCH-LinkE SWDIO | Nối chung: F4P6 D1, A4M6 chân 7, J4M6 chân 8 |
 | WCH-LinkE 3V3/5V | **Không nối** |
 
@@ -95,3 +95,33 @@ Vì sao không ngắt nguồn chip không test: chip bị ngắt VDD (kể cả 
 3. Nạp firmware đỗ cho từng chip riêng lẻ.
 4. Cắm SWIO chung. Tắt/bật từng chip rồi chạy `minichlink -i` ngay sau đó: phải nhận đúng chip vừa khởi động lại.
 5. Không nhấn nút C0 trên TWEN32F003 khi đang test.
+
+## 6. Máy đo dòng tiêu thụ (Arduino Uno, chỉ J4M6)
+
+Dòng của J4M6 đi từ chân 2 (VSS) qua 2 trở đo xuống GND chung. Uno (firmware `test/uno_meter/`, cổng `/dev/ttyACM*`, runner tự dò bằng `PING`) đo điện áp bằng tham chiếu nội ~1.1V và tự đổi thang.
+
+```
+ J4M6 chân 2 (VSS) ── nút A ────────────────────────────────────────── Uno A0
+                         │
+                      R2 22Ω
+                         │
+                      nút X ──┬──────────────┬──────────────┬───────── Uno A1
+                              │              │              │
+                          R1 10kΩ     Q1 8050: C      Q2 8050 làm diode
+                              │       B ─ 1kΩ ─ Uno D2  (B+C ở nút X, E ở GND)
+                              │       (10kΩ Uno D2 → Uno 5V)│
+                              │              E              │
+ GND chung ───────────────────┴──────────────┴──────────────┴───────── Uno GND
+```
+
+| Thang | Q1 (D2) | Dòng | Dải |
+| :-- | :-- | :-- | :-- |
+| µA | tắt (LOW) | V(A1) / R1 | ~0.5 – 40µA |
+| mA | dẫn (HIGH, mặc định) | (V(A0) − V(A1)) / R2 | ~40µA – 45mA |
+
+- **E của Q1 phải nối thẳng GND** (không qua trở đo): dòng base ~4mA của Q1 sẽ không bị tính vào dòng chip. Bản đầu đặt R2 dưới Q1 nên đo dư ~3.9mA.
+- **R2 nhỏ (22Ω)** để GND của chip chỉ nâng ~0.1V khi chạy / nạp code. R2 = 100Ω làm GND nâng ~0.4–0.8V, nạp code thất bại.
+- Mặc định Q1 dẫn; trở 10kΩ kéo D2 lên 5V giữ Q1 dẫn cả lúc Uno đang reset (mở cổng serial). Q2 giữ chip không sập nguồn trong vài µs nếu chip thức lúc đang ở thang µA.
+- Hiệu chuẩn 1 lần (lưu EEPROM): `CAL AREF <mV đo ở chân AREF>`, `CAL R1 <Ω>`, `CAL R2 <Ω>`. Bàn hiện tại: AREF 1065mV, R1 9.9kΩ, R2 22.2Ω.
+- Kiểm tra nhanh: tắt nguồn cả 3 chip (`PWR ALL OFF`) → máy đo phải chỉ ~0µA. Điện áp A1 ở thang mA phải < 50mV (Q1 bão hòa); nếu ~0.65V là Q1 không dẫn (cắm ngược C/E hoặc hở base).
+- Suite `current` (`hil.py current`): đo J4M6 chạy / Standby (thức bằng chân và bằng hẹn giờ) / Sleep.

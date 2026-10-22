@@ -26,6 +26,7 @@ static void setPort(GPIO_TypeDef* GPIOx, const GPIO_PinMode_t mode)
 {
     for (uint8_t pinNumber = 0; pinNumber < 8; pinNumber++)
     {
+        if (GPIOx == GPIOD && pinNumber == 1) continue; // PD1 = SWIO: ở ANALOG làm mất printf qua SWIO
         pinModePort(GPIOx, pinNumber, mode);
     }
 }

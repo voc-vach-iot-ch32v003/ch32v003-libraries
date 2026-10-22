@@ -39,6 +39,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | `ch32v003_spi` | v2.0.0 | 2026-10-22 | ⚠️ Handle `SPI_DriverHandle_t`, `spiWrite` liền mạch, sửa build F4P6 |
 | `ch32v003_power` | v2.0.0 | 2026-10-22 | ⚠️ `powerSleep`/`powerStandby`, `POWER_*_t` (mcuPin), sửa hẹn giờ AWU + SWIO, chạy cả J4M6 |
 | `ch32v003_power` | v2.0.1 | 2026-10-22 | tài liệu: dòng đo thực tế (Standby 6.7µA, Sleep 371µA), chân không dùng về `ANALOG`, nạp lại chip đang ngủ |
+| `ch32v003_power` | v2.0.2 | 2026-10-22 | ví dụ 02 mất printf (PD1 ANALOG), chi phí hẹn giờ +1.2µA |
 
 `delay`, `debug` giữ v1.0.0: thay đổi chỉ là định dạng Doxygen + `.gitignore` → đã commit, không phát hành.
 `timer`: sửa chú thích `MCU_PIN3` trong README (PA2 chỉ đúng với J4M6; A4M6 là PC3, F4P6 là PD6) → commit, không phát hành.
@@ -121,7 +122,9 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ Bằng chứng Standby thật (không cần đo dòng): nhánh Standby không tắt PLL, nhưng sau khi thức cờ `PLLRDYF` = 1 → phần cứng đã tắt PLL. 70/70 × 3 chip (J4M6 cũng vào Standby thật). Đối chứng âm: bỏ PDDS/SLEEPDEEP → `PLLRDYF` = 0, bài test báo LỖI. (`HSIRDYF` không bật khi phần cứng tự khởi động lại HSI → không dùng được.)
 - ✅ Đo tay dòng J4M6 (shunt ở chân GND + ANENG M118A thang DCV, `test/runner/standby_hold.py --mode standby|sleep`): Standby chân thả nổi ≥ 50µA (0.5V / 9.9kΩ), Standby chân `ANALOG` **6.7µA** (0.066V / 9.9kΩ), Sleep **371µA** (0.119V / 321Ω). → v2.0.1: README + doc header ghi số đo, khuyến cáo chân không dùng về `ANALOG`, cách nạp lại chip đang ngủ.
 - ✅ Thí nghiệm `test/runner/swio_probe.py` (J4M6): PD1, PD4+PD5, mọi chân về `ANALOG` → SWIO vẫn nạp được. Lần "khóa nạp" trước là do chip ngủ vĩnh viễn (SWD tắt) mà VDD không đi qua GPIO ESP32 nên không tắt/bật được nguồn; cứu bằng `rvprog -e` + cấp nguồn tay.
-- ⬜ Máy đo dòng tự động bằng CH32V003 (A4M6): tụ 104 + OPA làm bộ so sánh + TIM2 capture (dải µA), trở 10Ω + ADC (dải mA), gửi kết quả UART → ESP32 GPIO35. Cần thư viện OPA + UART trước.
+- ✅ Máy đo dòng tự động bằng Arduino Uno (`test/uno_meter/`, `test/runner/meter.py`, `WIRING.md` mục 6): R2 22Ω (thang mA) + R1 10kΩ nối tắt bằng 8050 (thang µA), tham chiếu nội 1.1V, tự đổi thang. Suite `current` (J4M6): chạy 5.4mA, Standby thức bằng chân 8.1µA, thức bằng hẹn giờ 9.35µA (LSI + AWU +1.2µA), Sleep 390µA. Lặp lại ổn định giữa các lần chạy.
+- ✅ PD1 ở `ANALOG` làm mất `printf` qua SWIO đang chạy (vẫn nạp được) → v2.0.2: ví dụ 02 + README giữ PD1.
+- ⬜ Máy đo dòng bằng CH32V003 (A4M6) thay Uno: tụ 104 + OPA làm bộ so sánh + TIM2 capture (dải µA), trở 22Ω + ADC (dải mA), gửi kết quả UART → ESP32 GPIO35. Cần thư viện OPA + UART trước.
 
 ### `ch32v003_ir`
 - ⬜ **Bug:** `rawLen` kiểu `uint8_t` nhưng buffer 256 phần tử → tràn về 0.
