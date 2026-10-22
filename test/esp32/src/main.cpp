@@ -3,6 +3,7 @@
 #include "bench_pins.h"
 #include "bench_channels.h"
 #include "bench_i2c.h"
+#include "bench_spi.h"
 
 // Firmware bàn test HIL: nhận lệnh văn bản qua Serial 115200, mỗi lệnh 1 dòng, trả lời 1 dòng "OK ..." / "ERR ...".
 // <ch> nhận số kênh (3), tên kênh (CH3) hoặc tên net (PD2).
@@ -26,8 +27,12 @@
 //   I2CS OFF                     -> tắt I2C slave
 //   I2CS LOAD <hex>              -> nạp sẵn dữ liệu cho lần master đọc kế tiếp (VD: LOAD A55A01, tối đa 32 byte)
 //   I2CS RX                      -> OK I2CS RX <số giao dịch> <hex các byte master đã ghi, '-' nếu không có> (rồi xóa)
+//   SPIS ON <sck> <mosi> <miso> <cs> -> bật SPI slave Mode 0 trên 4 kênh; Z ALL sẽ tắt
+//   SPIS OFF                     -> tắt SPI slave
+//   SPIS LOAD <hex|->            -> nạp 1 giao dịch: dữ liệu đẩy ra MISO (tối đa 64 byte, '-' = toàn 0x00)
+//   SPIS RX [timeoutMs]          -> OK SPIS RX <số bit> <hex các byte master đã gửi> (ERR nếu giao dịch chưa xong)
 
-static const uint8_t MAX_WORDS = 5;
+static const uint8_t MAX_WORDS = 6;
 static String lineBuffer;
 static uint32_t captureBuffer[BENCH_CAPTURE_MAX_EDGES];
 
@@ -119,6 +124,7 @@ static void cmdRelease(const String& target)
     if (target.equalsIgnoreCase("ALL"))
     {
         benchI2cStop();
+        benchSpiStop();
         benchReleaseAll();
         Serial.println("OK Z ALL");
         return;
@@ -225,6 +231,27 @@ static int hexNibble(const char c)
     return -1;
 }
 
+// Đổi chuỗi hex (VD "A55A01") thành mảng byte. Trả -1 nếu sai định dạng hoặc quá dài.
+static int parseHex(const String& text, uint8_t* out, const size_t maxLength)
+{
+    if (text == "-") return 0;
+    if (text.length() % 2 || text.length() / 2 > maxLength) return -1;
+    for (size_t i = 0; i < text.length(); i += 2)
+    {
+        const int hi = hexNibble(text[i]);
+        const int lo = hexNibble(text[i + 1]);
+        if (hi < 0 || lo < 0) return -1;
+        out[i / 2] = (hi << 4) | lo;
+    }
+    return text.length() / 2;
+}
+
+static void printHex(const uint8_t* data, const size_t length)
+{
+    if (length == 0) Serial.print('-');
+    for (size_t i = 0; i < length; i++) Serial.printf("%02X", data[i]);
+}
+
 static void cmdI2cSlave(const String& action, const String& arg1, const String& arg2)
 {
     if (action.equalsIgnoreCase("ON"))
@@ -246,15 +273,8 @@ static void cmdI2cSlave(const String& action, const String& arg1, const String& 
     else if (action.equalsIgnoreCase("LOAD"))
     {
         uint8_t data[32];
-        size_t n = 0;
-        for (size_t i = 0; i + 1 < arg1.length() && n < sizeof(data); i += 2)
-        {
-            const int hi = hexNibble(arg1[i]);
-            const int lo = hexNibble(arg1[i + 1]);
-            if (hi < 0 || lo < 0) break;
-            data[n++] = (hi << 4) | lo;
-        }
-        if (!benchI2cActive() || n * 2 != arg1.length())
+        const int n = parseHex(arg1, data, sizeof(data));
+        if (!benchI2cActive() || n < 0)
         {
             Serial.println("ERR I2CS LOAD <hex> (cần I2CS ON trước)");
             return;
@@ -267,13 +287,73 @@ static void cmdI2cSlave(const String& action, const String& arg1, const String& 
         uint16_t transactions = 0;
         const uint16_t n = benchI2cTakeReceived(data, sizeof(data), transactions);
         Serial.printf("OK I2CS RX %u ", transactions);
-        if (n == 0) Serial.print('-');
-        for (uint16_t i = 0; i < n; i++) Serial.printf("%02X", data[i]);
+        printHex(data, n);
         Serial.println();
     }
     else
     {
         Serial.println("ERR I2CS <ON|OFF|LOAD|RX>");
+    }
+}
+
+// ============================================================================
+// SPI SLAVE
+// ============================================================================
+
+static void cmdSpiSlave(const String* w)
+{
+    const String& action = w[1];
+    if (action.equalsIgnoreCase("ON"))
+    {
+        int ch[4];
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            ch[i] = channelArg(w[2 + i]);
+            if (ch[i] < 0) return;
+        }
+        benchI2cStop();
+        if (!benchSpiStart(BENCH_CHANNELS[ch[0]].gpio, BENCH_CHANNELS[ch[1]].gpio,
+                           BENCH_CHANNELS[ch[2]].gpio, BENCH_CHANNELS[ch[3]].gpio))
+        {
+            Serial.println("ERR SPIS ON thất bại");
+            return;
+        }
+        Serial.printf("OK SPIS ON SCK=%s MOSI=%s MISO=%s CS=%s\n", BENCH_CHANNELS[ch[0]].net,
+                      BENCH_CHANNELS[ch[1]].net, BENCH_CHANNELS[ch[2]].net, BENCH_CHANNELS[ch[3]].net);
+    }
+    else if (action.equalsIgnoreCase("OFF"))
+    {
+        benchSpiStop();
+        Serial.println("OK SPIS OFF");
+    }
+    else if (action.equalsIgnoreCase("LOAD"))
+    {
+        uint8_t data[BENCH_SPI_MAX_BYTES];
+        const int n = parseHex(w[2], data, sizeof(data));
+        if (n < 0 || !benchSpiLoad(data, n))
+        {
+            Serial.println("ERR SPIS LOAD <hex|-> (cần SPIS ON trước, tối đa 64 byte)");
+            return;
+        }
+        Serial.printf("OK SPIS LOAD %d\n", n);
+    }
+    else if (action.equalsIgnoreCase("RX"))
+    {
+        uint8_t data[BENCH_SPI_MAX_BYTES];
+        uint32_t bits = 0;
+        const int n = benchSpiTakeReceived(data, sizeof(data), w[2].length() ? w[2].toInt() : 100, bits);
+        if (n < 0)
+        {
+            Serial.println("ERR SPIS RX chưa có giao dịch hoàn tất");
+            return;
+        }
+        Serial.printf("OK SPIS RX %lu ", (unsigned long)bits);
+        printHex(data, n);
+        Serial.println();
+    }
+    else
+    {
+        Serial.println("ERR SPIS <ON|OFF|LOAD|RX>");
     }
 }
 
@@ -316,6 +396,7 @@ static void handleLine(String line)
     else if (cmd == "FREQ") cmdFrequency(w[1], w[2]);
     else if (cmd == "INTERVAL") cmdInterval(w[1], w[2]);
     else if (cmd == "I2CS") cmdI2cSlave(w[1], w[2], w[3]);
+    else if (cmd == "SPIS") cmdSpiSlave(w);
     else Serial.printf("ERR unknown command '%s'\n", w[0].c_str());
 }
 

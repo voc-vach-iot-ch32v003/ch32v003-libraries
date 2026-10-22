@@ -36,6 +36,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | `ch32v003_gpio` | v2.0.0 | 2026-10-22 | ⚠️ đổi tên type `GPIO_*_t`, `MCU_PIN_NONE` |
 | `ch32v003_i2c` | v1.1.0 | 2026-10-22 | không kẹt bus khi NACK, Fast Mode, `i2cWriteBurst`, SW ~100kHz |
 | `ch32v003_gpio` | v2.0.1 | 2026-10-22 | ví dụ 03 toggle sai chân trên A4M6/F4P6, bảng chân theo gói vỏ |
+| `ch32v003_spi` | v2.0.0 | 2026-10-22 | ⚠️ Handle `SPI_DriverHandle_t`, `spiWrite` liền mạch, sửa build F4P6 |
 
 `delay`, `debug` giữ v1.0.0: thay đổi chỉ là định dạng Doxygen + `.gitignore` → đã commit, không phát hành.
 `timer`: sửa chú thích `MCU_PIN3` trong README (PA2 chỉ đúng với J4M6; A4M6 là PC3, F4P6 là PD6) → commit, không phát hành.
@@ -98,9 +99,11 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 ### `ch32v003_spi`
 - ✅ **Bug:** F4P6 không biên dịch được (`NSS_PC0` không tồn tại).
 - ✅ ⚠️ **Breaking:** chuyển sang Handle `SPI_DriverHandle_t` (giống i2c): `spiInit(&handle)`, `spiTransfer(&handle, b)`, thêm `spiWrite()`, `spiWaitIdle(&handle)`. Bỏ enum remap thừa (NSS luôn quản lý mềm), thêm `SPI_ClockDivider_t`. Đổi `SPI_SoftwareConfig_t → SPI_SoftwareConfiguration_t`.
-- ✅ **Tối ưu:** bit-bang cache Port + mặt nạ bit lúc init → mỗi bit chỉ ghi BSHR/BCR thay vì giải mã chân qua `digitalWrite`.
-- ⬜ README + library.json.
-- 🧪 HIL: ESP32 SPI slave nhận byte, so sánh; đo tần số SCK; HW (F4P6) + SW.
+- ✅ **Tối ưu:** bit-bang cache Port + mặt nạ bit lúc init → mỗi bit chỉ ghi BSHR/BCR thay vì giải mã chân qua `digitalWrite` (~1MHz).
+- ✅ **Tối ưu:** `spiWrite` phần cứng nạp byte khi TXE trống (không chờ RXNE từng byte) → SCK liền mạch, cuối cùng chờ BSY + xóa RXNE/OVR.
+- ✅ README viết lại theo docs-core (Quick Start qua `check_readme.py`), library.json dependencies dạng object, mã nguồn vào `src/`.
+- ✅ HIL `spi` (2026-10-22): ESP32 SPI slave Mode 0. F4P6 24/24 (HW 3MHz, HW 187.5kHz, SW), A4M6 9/9, J4M6 9/9 (SW + từ chối HW): song công 8 byte, `spiWrite` 12 byte, `spiTransfer` sau `spiWrite`, tốc độ qua độ dài CS (32 byte @3MHz = 84µs, đúng lý thuyết).
+- ✅ Mẫu đối chứng: bỏ bước xóa RXNE/OVR sau `spiWrite` → 3 LỖI (đọc nhầm byte cũ) ⇒ bài test bắt được lỗi.
 
 ### `ch32v003_power`
 - ⬜ **Bug (hiệu năng):** `calcAwuTiming` quét 882 tổ hợp nhân/chia mềm (RV32EC không có MUL/DIV) và bị gọi SAU khi hạ clock xuống HSI/256 (~94kHz) → có thể tốn vài giây. → Tính giải tích 14 vòng, tính sẵn ở `powerConfigureWakeup()`.
@@ -167,7 +170,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ `test/WIRING.md` + `test/wiring/gen.py` — bản vẽ ESP32 30 chân (2 mini) ↔ F4P6 (TWEN32F003) ↔ A4M6/J4M6. Cả 3 chip luôn có nguồn từ GPIO (GPIO2 → F4P6, GPIO22 → A4M6, GPIO23 → J4M6; ESP32 USB hướng lên, A4M6 xoay 180°), SWIO nối chung, chip không test chạy firmware đỗ.
 - ✅ Firmware đỗ `test/ch32v003/src/park/` (env `park_J4M6/A4M6/F4P6`, 1148 byte Flash): mọi chân Hi-Z, `delayMs(1000)` (cửa sổ nạp), in `HIL:PARKED <chip>`, `setSwioMode(SWIO_MODE_GPIO)`, ngủ `WFI`. ✅ Chạy trên phần cứng.
 - ✅ `CLAUDE.md` — quy trình làm việc, quy chuẩn template, cách chạy test, quy tắc phát hành.
-- 🔧 Firmware ESP32 `test/esp32/`: ✅ phần nguồn (`PING`, `PWR <chip|ALL> <ON|OFF>`, `RST <chip> [ms]`, `STATUS`; khởi động thì bật cả 3 chip). ✅ Lệnh 16 kênh (`Z`, `MODE`, `W`/`ON`/`OFF`, `R`, `RA`, `ADC`, `DAC`, `CAP [NS]`, `FREQ`, `INTERVAL`). ✅ `I2CS ON/OFF/LOAD/RX` (I2C slave, nạp sẵn dữ liệu vì ESP32 gốc không kéo giãn SCL). ⬜ `SPIS`, `UART` (làm cùng thư viện tương ứng).
+- 🔧 Firmware ESP32 `test/esp32/`: ✅ phần nguồn (`PING`, `PWR <chip|ALL> <ON|OFF>`, `RST <chip> [ms]`, `STATUS`; khởi động thì bật cả 3 chip). ✅ Lệnh 16 kênh (`Z`, `MODE`, `W`/`ON`/`OFF`, `R`, `RA`, `ADC`, `DAC`, `CAP [NS]`, `FREQ`, `INTERVAL`). ✅ `I2CS ON/OFF/LOAD/RX` (I2C slave, nạp sẵn dữ liệu vì ESP32 gốc không kéo giãn SCL). ✅ `SPIS ON/OFF/LOAD/RX` (SPI slave Mode 0 trên 4 kênh bất kỳ, ESP-IDF `spi_slave`, không DMA, ≤ 64 byte/giao dịch). ⬜ `UART` (làm cùng thư viện tương ứng).
 - ✅ `test/runner/bench_check.py`: kiểm tra bàn test — ĐẠT trên phần cứng (2026-10-22): cả 3 chip đỗ thì không ai trả lời; khởi động lại từng chip → nạp đúng chip trong cửa sổ 1 giây (F4P6 `0x0030`, A4M6 `0x0032`, J4M6 `0x0033`).
 - ✅ Runner `test/runner/hil.py <suite>`: Hi-Z → RST chip → nạp + mở terminal SWIO trong cửa sổ 1s (kiểm tra Part Type để chặn nạp nhầm chip) → xử lý `HIL:WAIT/CHECK/END` → nạp lại firmware đỗ → báo cáo JSON `test/runner/reports/`.
 - ✅ `test/runner/check_readme.py <lib...>`: biên dịch Quick Start của README trên 3 chip.
