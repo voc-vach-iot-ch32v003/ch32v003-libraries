@@ -71,6 +71,7 @@ int main(void)
 - Đo thời gian bằng `CAP`: sườn đầu tiên bị phát hiện trễ vài µs → đo khoảng ≥ 50µs, hoặc dùng `CAP ... NS` + trung vị nhiều chu kỳ.
 - Các net dùng chung cho cả 3 chip: chip nào còn chạy firmware test (runner bị dừng giữa chừng) sẽ lái net và làm sai phép đo. Runner đỗ cả 3 chip lúc bắt đầu; đừng giết runner bằng `kill -9`.
 - Firmware test tắt/bật lại SWD (VD: ngủ với `POWER_SLEEP_DISABLE_SWD`): chờ ~50ms trước khi in `HIL:` để dòng không bị rác SWIO làm mất.
+- Đo tay dòng tiêu thụ (đồng hồ chỉ có thang dòng ≥ 6A → đo áp trên trở nối tiếp chân GND): `test/runner/standby_hold.py --chip J4M6 --mode standby|sleep`. Chip ngủ vĩnh viễn với SWD tắt → VDD phải đi qua GPIO ESP32 thì mới nạp lại được (`RST`); nếu không: `rvprog -e` + cấp nguồn tay.
 - Firmware test trên CH32 báo kết quả qua SWIO bằng dòng `HIL:...` (xem `test/ch32v003/include/hil.h`). Phép đo thời gian phải so theo **clock thật của từng chip** (HSI lệch tới ±2%): suite `timing` lấy `delayMs` làm thước đo.
 - Thêm suite mới: tạo `src/<suite>/main.c`, 3 env `<suite>_<chip>` trong `test/ch32v003/platformio.ini`, và `test/runner/suites/<suite>.py` có `on_wait(step, bench, ctx)`.
 

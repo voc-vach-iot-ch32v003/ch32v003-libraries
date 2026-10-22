@@ -38,6 +38,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | `ch32v003_gpio` | v2.0.1 | 2026-10-22 | ví dụ 03 toggle sai chân trên A4M6/F4P6, bảng chân theo gói vỏ |
 | `ch32v003_spi` | v2.0.0 | 2026-10-22 | ⚠️ Handle `SPI_DriverHandle_t`, `spiWrite` liền mạch, sửa build F4P6 |
 | `ch32v003_power` | v2.0.0 | 2026-10-22 | ⚠️ `powerSleep`/`powerStandby`, `POWER_*_t` (mcuPin), sửa hẹn giờ AWU + SWIO, chạy cả J4M6 |
+| `ch32v003_power` | v2.0.1 | 2026-10-22 | tài liệu: dòng đo thực tế (Standby 6.7µA, Sleep 371µA), chân không dùng về `ANALOG`, nạp lại chip đang ngủ |
 
 `delay`, `debug` giữ v1.0.0: thay đổi chỉ là định dạng Doxygen + `.gitignore` → đã commit, không phát hành.
 `timer`: sửa chú thích `MCU_PIN3` trong README (PA2 chỉ đúng với J4M6; A4M6 là PC3, F4P6 là PD6) → commit, không phát hành.
@@ -118,7 +119,9 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ HIL `power` (2026-10-22, 53/53 × 3 chip): Sleep + Standby × (từ chối khi không có nguồn, 3 kiểu sườn + không thức sớm, 2 chân, hẹn giờ 2000/5200ms + công thức `(W+1)·P` khớp 0.1%, chân cắt ngang hẹn giờ 20s, RAM giữ), hẹn giờ 32s nhiều lần AWU, SWIO GPIO giữ sau khi thức.
 - ✅ Mẫu đối chứng: khôi phục hành vi cũ (luôn bật lại SWD) → 2 LỖI ⇒ bài test bắt được lỗi.
 - ✅ Bằng chứng Standby thật (không cần đo dòng): nhánh Standby không tắt PLL, nhưng sau khi thức cờ `PLLRDYF` = 1 → phần cứng đã tắt PLL. 70/70 × 3 chip (J4M6 cũng vào Standby thật). Đối chứng âm: bỏ PDDS/SLEEPDEEP → `PLLRDYF` = 0, bài test báo LỖI. (`HSIRDYF` không bật khi phần cứng tự khởi động lại HSI → không dùng được.)
-- ⬜ Dòng tiêu thụ (~10µA Standby) chưa đo được trên bàn test (chỉ là số datasheet).
+- ✅ Đo tay dòng J4M6 (shunt ở chân GND + ANENG M118A thang DCV, `test/runner/standby_hold.py --mode standby|sleep`): Standby chân thả nổi ≥ 50µA (0.5V / 9.9kΩ), Standby chân `ANALOG` **6.7µA** (0.066V / 9.9kΩ), Sleep **371µA** (0.119V / 321Ω). → v2.0.1: README + doc header ghi số đo, khuyến cáo chân không dùng về `ANALOG`, cách nạp lại chip đang ngủ.
+- ✅ Thí nghiệm `test/runner/swio_probe.py` (J4M6): PD1, PD4+PD5, mọi chân về `ANALOG` → SWIO vẫn nạp được. Lần "khóa nạp" trước là do chip ngủ vĩnh viễn (SWD tắt) mà VDD không đi qua GPIO ESP32 nên không tắt/bật được nguồn; cứu bằng `rvprog -e` + cấp nguồn tay.
+- ⬜ Máy đo dòng tự động bằng CH32V003 (A4M6): tụ 104 + OPA làm bộ so sánh + TIM2 capture (dải µA), trở 10Ω + ADC (dải mA), gửi kết quả UART → ESP32 GPIO35. Cần thư viện OPA + UART trước.
 
 ### `ch32v003_ir`
 - ⬜ **Bug:** `rawLen` kiểu `uint8_t` nhưng buffer 256 phần tử → tràn về 0.

@@ -1,0 +1,60 @@
+#include "ch32fun.h"
+#include "ch32v003_debug.h"
+#include "ch32v003_delay.h"
+#include "ch32v003_gpio.h"
+#include "ch32v003_power.h"
+
+// Firmware đo tay dòng Standby (nạp bằng test/runner/standby_hold.py):
+//   1. Sau cửa sổ nạp: mọi chân về ANALOG (tắt bộ đệm ngõ vào số). KHÔNG để Input thả nổi: net trôi ở mức
+//      lưng chừng làm bộ đệm CMOS dẫn xuyên, đo thực tế ≥ 50µA thay vì 6.7µA. Chân đánh thức PA2 do thư viện
+//      đặt Pull-up. Chip ngủ vĩnh viễn với SWD tắt: muốn nạp lại phải tắt/bật nguồn (RST qua ESP32, nên VDD
+//      phải đi qua GPIO của ESP32), nếu không thì dùng rvprog -e + cấp nguồn tay.
+//   2. Sau cửa sổ nạp 1 giây: vào Standby (hoặc Sleep nếu build với -DHOLD_SLEEP=1) và ở đó mãi (SWD tắt trong lúc ngủ).
+//   3. Kéo PA2 xuống GND (ESP32: OFF PA2) -> chip thức và chạy liên tục (đối chứng dòng lúc thức).
+
+#define WAKE_PIN ((MCU_PORT_INDEX_A << 4) | 2) // PA2 (CH11)
+
+#if defined(HOLD_SLEEP) && HOLD_SLEEP
+#define HOLD_ENTER powerSleep
+#define HOLD_NAME "Sleep"
+#else
+#define HOLD_ENTER powerStandby
+#define HOLD_NAME "Standby"
+#endif
+
+static void setPort(GPIO_TypeDef* GPIOx, const GPIO_PinMode_t mode)
+{
+    for (uint8_t pinNumber = 0; pinNumber < 8; pinNumber++)
+    {
+        pinModePort(GPIOx, pinNumber, mode);
+    }
+}
+
+int main(void)
+{
+    SystemInit();
+    setPort(GPIOA, INPUT);
+    setPort(GPIOC, INPUT);
+    setPort(GPIOD, INPUT);
+    delayMs(1000); // Cửa sổ nạp
+
+    setPort(GPIOA, ANALOG);
+    setPort(GPIOC, ANALOG);
+    setPort(GPIOD, ANALOG);
+
+    static const POWER_WakeupPin_t wakePins[] = {{WAKE_PIN, POWER_WAKEUP_FALLING}};
+    static const POWER_WakeupConfiguration_t config = {wakePins, 1, 0};
+    powerConfigureWakeup(&config);
+
+    printf("HIL:STANDBY_HOLD vao " HOLD_NAME ", keo PA2 xuong GND de danh thuc\n");
+    delayMs(50); // Cho dòng printf truyền xong trước khi SWD tắt
+
+    HOLD_ENTER();
+
+    delayMs(50);
+    printf("HIL:AWAKE chip dang chay lien tuc\n");
+    // ReSharper disable once CppDFAEndlessLoop
+    while (1)
+    {
+    }
+}
