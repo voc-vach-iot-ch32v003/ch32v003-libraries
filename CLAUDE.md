@@ -1,0 +1,88 @@
+# CLAUDE.md — Bộ thư viện CH32V003 (Vọc Vạch IoT)
+
+Mono-repo gom các thư viện `ch32v003_*` cho CH32V003 (framework **ch32v003fun**, PlatformIO). Mỗi thư mục `ch32v003_*` là **một git submodule riêng** (remote `git@vocvachiot:voc-vach-iot-ch32v003/<tên>.git`): commit/tag trong từng submodule, rồi cập nhật con trỏ submodule ở repo gốc.
+
+Giao tiếp với người dùng bằng **tiếng Việt**. Việc đang làm và còn lại: **`TASKS.md`** (cập nhật sau mỗi bước).
+
+## Quy chuẩn bắt buộc — đọc trước khi sửa thư viện
+
+Template nằm ở `../template/` (đọc `embedded-library-router.md` để chọn khâu):
+
+| Khâu | File |
+| :-- | :-- |
+| Refactor code | `../template/embedded-library-refactor-core.md` |
+| Ví dụ `examples/` | `../template/embedded-library-examples-core.md` |
+| README | `../template/embedded-library-docs-core.md` |
+| Release | `../template/embedded-library-release-core.md` |
+| Đặc thù CH32V003 | `../template/embedded-profile-ch32v003.md` |
+
+Tóm tắt những điểm hay sai:
+
+- **Cấu trúc**: mã nguồn trong `src/` (`<lib>.h`, `<lib>.c`, `<lib>_types.h`, `<lib>_defs.h`), `library.json` có `dependencies` dạng **object** `{ "name": ..., "version": "<git url>" }`.
+- **Doxygen**: chỉ ở file `.h` (`@file`, `@author Vọc Vạch IoT`, `@brief`); **không** `@version` / `@date`; **không** khối header ở đầu `.c`. Mọi hàm/enum/struct/trường public có doc tiếng Việt.
+- **Đặt tên**: type `<MODULE>_<FullPascalCase>_t` (không viết tắt: `Configuration`, `DriverHandle`), hàm `moduleVerb()` camelCase, macro `UPPER_SNAKE`. **Ngoại lệ có chủ đích**: `gpio`, `delay`, `timer` giữ tên hàm kiểu Arduino (`pinMode`, `delayMs`, `millis`...).
+- **Handle pattern**: driver nhận con trỏ handle (`I2C_DriverHandle_t`, `SPI_DriverHandle_t`...), không dùng biến `static` toàn cục cho trạng thái thiết bị (phải hỗ trợ nhiều thiết bị).
+- **Gói vỏ**: phân nhánh bằng `#if defined(CH32V003_J4M6 | _A4M6 | _F4P6)`; chân lấy từ `ch32v003_gpio_pins.h` (`MCU_PINx`, `MCU_I2C_SDA`...).
+- **Cấu hình người dùng**: macro mặc định trong `<lib>_defs.h` bọc `#ifndef`, cho phép ghi đè qua `sys_config.h` của dự án bằng `__has_include("sys_config.h")`. Log debug (`printf`) chỉ bật qua `<LIB>_DEBUG_LOG_ENABLE`, mặc định 0.
+- **Thay đổi API (breaking)**: hỏi người dùng trước; ghi vào `TASKS.md` và release note (code cũ vs mới).
+
+## Phong cách code (giữ giống code sẵn có)
+
+Allman braces, thụt 4 space, chú thích tiếng Việt ngắn gọn, khối phân đoạn `// ====...`. Ví dụ/ứng dụng dùng `static void setup(void)` / `static void loop(void)` và `main()`:
+
+```c
+int main(void)
+{
+    SystemInit();
+    delayMs(1000); // BẮT BUỘC: cửa sổ nạp 1 giây (bàn test HIL dựa vào đây để nạp lại chip)
+    setup();
+    while (1) { loop(); }
+}
+```
+
+## Ràng buộc phần cứng CH32V003 cần nhớ khi viết code
+
+- Lõi **RV32EC: không có lệnh nhân/chia phần cứng** → `*`, `/`, `%` với biến là gọi hàm libgcc (hàng chục–hàng trăm chu kỳ). Ưu tiên dịch bit, tính sẵn ngoài vòng lặp, tránh chia trong ngắt/vòng lặp nóng.
+- RAM 2KB, Flash 16KB. Tránh buffer lớn trên stack, tránh kéo `printf` vào thư viện khi không cần.
+- Build có `-flto`, `-ffunction-sections`, `--gc-sections`: hàm không dùng bị loại bỏ.
+- SysTick: `ch32v003_timer` chiếm `SysTick_Handler` (ngắt 1ms). `Delay_Ms/Us` của ch32fun đọc `SysTick->CNT` chạy tự do — không reset CNT, không bật auto-reload.
+
+## Kiểm thử
+
+| Loại | Lệnh | Ghi chú |
+| :-- | :-- | :-- |
+| Logic thuần trên máy tính | `test/host/run.sh` | gcc, không cần phần cứng (intmath...) |
+| Build mọi thư viện × 3 chip | `pio run -d test/ch32v003` | env `smoke_*`; build phải sạch warning của thư viện |
+| Kiểm tra bàn test | `$PY test/runner/bench_check.py` | ESP32 + WCH-LinkE + 3 chip |
+| Test HIL một thư viện | `$PY test/runner/hil.py <suite> [--chip F4P6 A4M6 J4M6]` | firmware `test/ch32v003/src/<suite>/` + kịch bản `test/runner/suites/<suite>.py`; suite hiện có: `gpio`, `timing`, `intmath`, `timer_wrap` (~2 phút/chip) |
+| Code mẫu README biên dịch được | `$PY test/runner/check_readme.py <lib...>` | trích khối ```c ở mục Quick Start, build 3 chip |
+
+`$PY` = `/mnt/data/.system/environments/penv/bin/python` (python của PlatformIO, có sẵn `pyserial`). `minichlink` ở `~/.platformio/packages/tool-minichlink/minichlink`.
+
+### Bàn test HIL (đọc `test/WIRING.md` trước khi đụng phần cứng)
+
+- ESP32 DevKit 30 chân (`/dev/ttyUSB0`, firmware `test/esp32/`) nối **16 kênh** tới 3 chip qua trở 1kΩ; bảng kênh duy nhất ở **`test/wiring/gen.py`** (`CH`), sinh lại tài liệu/bản vẽ từ đó.
+- Nguồn chip lấy thẳng từ GPIO ESP32: **GPIO2 → F4P6, GPIO22 → A4M6, GPIO23 → J4M6** (HIGH = có điện). Không dùng GPIO12 làm nguồn (chân strapping).
+- SWIO của 3 chip **nối chung** vào một WCH-LinkE. Chip không test chạy **firmware đỗ** (`test/ch32v003/src/park/`): chân Hi-Z, tắt SWD sau 1 giây. Muốn nạp chip X: đưa 16 kênh về Hi-Z → `RST X` (tắt nguồn 50ms) → nạp trong cửa sổ 1 giây → sau khi test xong nạp lại firmware đỗ.
+- Nhận diện chip qua `minichlink -i` → `Part Type`: `00-30` F4P6, `00-32` A4M6, `00-33` J4M6. Part Type/UUID "lạ" = **2 chip cùng trả lời** (dữ liệu là AND bit) → có chip bị reset theo / dây cắm nhầm.
+- Lệnh ESP32 (Serial 115200, mỗi lệnh 1 dòng, trả lời `OK ...`/`ERR ...`): xem đầu `test/esp32/src/main.cpp`.
+- Firmware test trên CH32 báo kết quả qua SWIO bằng dòng `HIL:...` (xem `test/ch32v003/include/hil.h`). Phép đo thời gian phải so theo **clock thật của từng chip** (HSI lệch tới ±2%): suite `timing` lấy `delayMs` làm thước đo.
+- Thêm suite mới: tạo `src/<suite>/main.c`, 3 env `<suite>_<chip>` trong `test/ch32v003/platformio.ini`, và `test/runner/suites/<suite>.py` có `on_wait(step, bench, ctx)`.
+
+## Git / phát hành
+
+### Quy trình BẮT BUỘC khi xong một thư viện
+
+"Xong" = code đúng template + README cập nhật (Quick Start qua `check_readme.py`) + test (host/HIL) ĐẠT trên cả 3 chip + `TASKS.md` đã ghi. Ngay khi xong, làm **lập tức, không chờ hỏi**, theo thứ tự:
+
+1. **Trong submodule `ch32v003_<lib>`:**
+   - Bump `version` trong `library.json` theo SemVer (`embedded-library-release-core.md`): đổi/xóa API hoặc type → MAJOR; thêm API → MINOR; chỉ sửa lỗi/tối ưu → PATCH.
+   - Commit (`feat(<lib>): ...` / `fix(<lib>): ...` / `refactor(<lib>): ...`, tiếng Việt), tag `v<version>`, push nhánh + tag.
+   - Tạo GitHub Release: `gh release create v<version> --repo voc-vach-iot-ch32v003/ch32v003_<lib> --title "v<version> - <mô tả>" --notes-file <file>`, nội dung theo `embedded-library-release-core.md` (Breaking Changes có code cũ vs mới, New Features, Improvements, Bug Fixes, ngày `YYYY-MM-DD`).
+2. **Ở repo gốc:** `git add ch32v003_<lib>` (trỏ submodule tới commit mới) cùng các file test/tài liệu liên quan (`test/...`, `TASKS.md`, `CLAUDE.md`), commit `chore(<lib>): cập nhật submodule lên v<version>`, push.
+3. Báo lại người dùng: version, link release, kết quả test.
+
+- **Tài khoản:** git push/tag đi qua SSH alias `git@vocvachiot:` (đã xác thực là `voc-vach-iot`). `gh` có 2 tài khoản: mặc định **`Thieu-Van-Hieu`**; **chỉ khi tạo Release / thao tác GitHub API của tổ chức** mới `gh auth switch -u voc-vach-iot`, làm xong **phải đổi về ngay** `gh auth switch -u Thieu-Van-Hieu` (kể cả khi lỗi giữa chừng). Không thấy tài khoản `voc-vach-iot` trong `gh auth status` thì dừng lại hỏi người dùng.
+- Thư viện phụ thuộc thư viện khác: release thư viện tầng dưới trước, tầng trên sau.
+- Commit message theo kiểu sẵn có: `feat(gpio): ...`, `fix(i2c): ...`, `refactor: ...` (tiếng Việt).
+- `test/HIL_SPEC.md` là tài liệu cục bộ (đã gitignore), không đưa lên repo.

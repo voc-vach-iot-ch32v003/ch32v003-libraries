@@ -115,7 +115,7 @@ lib_deps =
 
 ## 📜 Giấy Phép (License)
 
-Dự án được phân phối dưới dạng **Giấy phép MIT** - xem file [LICENSE](https://www.google.com/search?q=LICENSE) để biết thêm chi tiết.
+Dự án được phân phối dưới dạng **Giấy phép MIT** - xem file [LICENSE](LICENSE) để biết thêm chi tiết.
 
 ## 🤝 Lời Cảm Ơn
 

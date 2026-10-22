@@ -1,0 +1,4 @@
+.pio
+.idea
+# Code Quick Start trích từ README, sinh bởi test/runner/check_readme.py
+src/_readme/

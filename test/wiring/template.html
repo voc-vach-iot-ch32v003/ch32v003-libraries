@@ -1,0 +1,188 @@
+<title>Bàn test HIL CH32V003</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Bố cục: một cột tài liệu kỹ thuật, hình vẽ rộng cuộn ngang riêng; màu dây theo nhóm tín hiệu */
+:root {
+  --bg: #f4f5f1; --fg: #1c2126; --muted: #5f676f; --line: #c9ccc4; --board: #e9e8df; --hole: #b5b3a7;
+  --chip: #2a2f34; --chipfg: #eef0ea; --railp: #d23b3b; --railm: #2f5fbf; --surface: #ffffff;
+  --i2c: #2563d6; --spi: #c9640f; --uart: #178a50; --dac: #7c3fcf; --gpio: #0e8587;
+  --pwr: #d23b3b; --gnd: #3b3f44; --swio: #9c7c00; --res: #d4b07a; --resband: #6b4a1f;
+  --warn-bg: #fff4d6; --warn-fg: #6b4e00;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171a; --fg: #e4e7e1; --muted: #9aa2aa; --line: #3a4148; --board: #1f2428; --hole: #4c545c;
+    --chip: #0a0c0e; --chipfg: #e8ebe5; --railp: #ff6b6b; --railm: #6e9bff; --surface: #1b1f23;
+    --i2c: #6ea2ff; --spi: #ffa552; --uart: #4fd08c; --dac: #b48cff; --gpio: #3fc6c8;
+    --pwr: #ff6b6b; --gnd: #c4c9cf; --swio: #f2cf3a; --res: #c9a46a; --resband: #3a2a12;
+    --warn-bg: #3a3112; --warn-fg: #f6dc86; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171a; --fg: #e4e7e1; --muted: #9aa2aa; --line: #3a4148; --board: #1f2428; --hole: #4c545c;
+  --chip: #0a0c0e; --chipfg: #e8ebe5; --railp: #ff6b6b; --railm: #6e9bff; --surface: #1b1f23;
+  --i2c: #6ea2ff; --spi: #ffa552; --uart: #4fd08c; --dac: #b48cff; --gpio: #3fc6c8;
+  --pwr: #ff6b6b; --gnd: #c4c9cf; --swio: #f2cf3a; --res: #c9a46a; --resband: #3a2a12;
+  --warn-bg: #3a3112; --warn-fg: #f6dc86; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 40px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(30px, 5vw, 44px); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 26px; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--f-display); font-weight: 600; font-size: 19px; margin: 0; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+h3 .n { font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-weight: 400; }
+p, li { max-width: 68ch; margin: 0; }
+.lead { font-size: 18px; color: var(--muted); max-width: 70ch; }
+section { display: grid; gap: 14px; min-width: 0; }
+.m, code { font-family: var(--f-mono); font-size: 13px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; }
+.check { background: var(--warn-bg); color: var(--warn-fg); border-left: 4px solid var(--swio); padding: 14px 18px; display: grid; gap: 8px; }
+.check h2 { font-size: 20px; color: var(--warn-fg); }
+.check ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+figure { margin: 0; display: grid; gap: 10px; min-width: 0; }
+figcaption { font-size: 14px; color: var(--muted); max-width: 72ch; }
+figcaption b { color: var(--fg); }
+.fig { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
+.fig svg { display: block; width: 100%; height: auto; min-width: 820px; }
+.fig svg text.t { font-family: var(--f-body); }
+.fig svg text.mono { font-family: var(--f-mono); }
+.fig svg text.h { font-family: var(--f-display); }
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-family: var(--f-display); font-weight: 600; font-size: 14px; color: var(--muted);
+  border-bottom: 2px solid var(--line); padding: 6px 10px; white-space: nowrap; }
+td { border-bottom: 1px solid var(--line); padding: 6px 10px; vertical-align: top; }
+td .sw { margin-right: 8px; }
+.steps { display: grid; gap: 28px; }
+.step { gap: 10px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+.cols > div { min-width: 0; display: grid; gap: 8px; align-content: start; }
+ol.seq, ul.plain { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.note { font-size: 14px; color: var(--muted); }
+.boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.boards div { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: var(--surface); display: grid; gap: 4px; }
+.boards b { font-family: var(--f-mono); font-size: 13px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">ch32v003-libraries · test/wiring</div>
+    <h1>Bàn test HIL CH32V003</h1>
+    <p class="lead">Bản vẽ đi dây cho bàn test dùng 4 breadboard mini: ESP32 DevKit 30 chân vắt qua 2 mini bên trái, TWEN32F003 (F4P6) trên 1 mini, ngay dưới là mini chứa A4M6 và J4M6. Cả 3 chip luôn có nguồn từ chân GPIO của ESP32 và nạp chung qua một WCH-LinkE.</p>
+    <div class="legend" aria-label="Màu dây">
+      <span><i class="sw" style="background:var(--i2c)"></i>I2C</span>
+      <span><i class="sw" style="background:var(--spi)"></i>SPI</span>
+      <span><i class="sw" style="background:var(--uart)"></i>UART</span>
+      <span><i class="sw" style="background:var(--dac)"></i>DAC → ADC</span>
+      <span><i class="sw" style="background:var(--gpio)"></i>GPIO</span>
+      <span><i class="sw" style="background:var(--pwr)"></i>Nguồn</span>
+      <span><i class="sw" style="background:var(--gnd)"></i>GND</span>
+      <span><i class="sw" style="background:var(--swio)"></i>SWIO</span>
+    </div>
+  </header>
+
+  <aside class="check">
+    <h2>Kiểm tra trước khi cắm dây</h2>
+    <ol>
+      <li><b>Chân V nào là 3V3 trên TWEN32F003.</b> Bản vẽ giả định là chân V ở hàng 2 (hàng có TX, RX), cắm ở lỗ <code>F:2a</code>. Nếu là chân V hàng 1 thì cắm dây GPIO2 vào <code>F:2j</code>. Khi chạy bàn test luôn <b>rút USB-C</b> của board.</li>
+      <li><b>Chiều đặt:</b> ESP32 và TWEN32F003 đều cắm <b>cổng USB hướng lên</b>. Khi đó hàng 2 của TWEN32F003 (G, V, TX, RX, A1, A2, C0–C4) nằm bên trái, phía gần ESP32. <b>A4M6 xoay 180°</b>: chấm chân 1 ở <b>dưới-phải</b>. J4M6 đặt bình thường, chân 1 ở trên-trái.</li>
+      <li><b>Không dùng GPIO12 để cấp nguồn.</b> Lúc ESP32 khởi động, GPIO12 phải ở mức LOW. Nếu chân này nối vào VDD của một chip, pull-up I2C sẽ nuôi ngược qua chip đó làm chân lên mức HIGH, và ESP32 không boot được. Vì vậy bản vẽ dùng GPIO12 làm tín hiệu (CH2 → D3, đường không có pull-up).</li>
+    </ol>
+  </aside>
+
+  <section>
+    <h2>Cách bàn test chọn chip</h2>
+    <p>Ba chip dùng chung 16 đường tín hiệu và một dây nạp SWIO. Thay vì tắt các chip không test, ta cho chúng chạy <b>firmware đỗ</b>: mọi chân để Hi-Z và sau 1 giây thì tắt SWD. Nhờ vậy chip đỗ không tải bus, không bị nuôi ngược, và không trả lời trên dây SWIO.</p>
+    <ol class="seq">
+      <li>Runner đưa 16 kênh của ESP32 về Hi-Z.</li>
+      <li>ESP32 tắt nguồn chip cần test khoảng 50ms rồi bật lại. Chip khởi động lại và đứng trong <code>delayMs(1000)</code> với SWD đang bật.</li>
+      <li>Trong 1 giây đó chỉ chip này trả lời trên SWIO, vì hai chip kia đã tắt SWD. Runner nạp firmware test bằng <code>minichlink</code>.</li>
+      <li>Firmware test chạy, in kết quả qua SWIO. ESP32 đóng vai thiết bị ngoại vi theo lệnh của runner.</li>
+      <li>Xong thì nạp lại firmware đỗ cho chip này, rồi chuyển sang chip tiếp theo.</li>
+    </ol>
+    <p class="note">Lần đầu tiên, mỗi chip phải được nạp firmware đỗ riêng lẻ: mỗi lần chỉ cắm dây SWIO vào một chip. Sau đó mọi thứ chạy tự động. Mọi firmware (đỗ, test, ví dụ) bắt buộc giữ <code>delayMs(1000)</code> ở đầu chương trình.</p>
+  </section>
+
+  <section>
+    <h2>Hình 1 · Toàn cảnh</h2>
+    <figure>
+      <div class="fig">{{FIG_BENCH}}</div>
+      <figcaption>Hàng chân xa F4P6 của ESP32 (3V3 … 23) cắm ở cột <b>j</b> của mini EL, hàng chân gần (VIN … EN) cắm ở cột <b>a</b> của mini ER. Trở 1kΩ cắm vắt qua rãnh giữa ngay tại hàng của chân, dây đi ra từ nửa bên kia rãnh. Mini F đặt <b>thấp hơn mini ESP32 đúng 3 hàng</b>, nên 6 dây CH8–CH13 nằm ngang thẳng vào hàng 2 của F4P6. CH1, CH2 và các dây từ cột xa vòng qua đỉnh vào hàng 1. CH14–CH16 vòng phía dưới vào C2–C4. A4M6 xoay 180°, nên dây từ F4P6 chỉ còn 4 dây (PC1–PC4) phải vắt ngang chip; A4M6 sang J4M6 đều cùng phía, cùng thứ tự. Dây nguồn, GND và 3V3 chỉ ghi nhãn tại đầu dây, lỗ chính xác có trong các bước bên dưới.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Hình 2 · Mỗi kênh nối tới đâu</h2>
+    <figure>
+      <div class="fig">{{FIG_LADDER}}</div>
+      <figcaption>Mỗi hàng là một <b>net</b> mang tên chân port của CH32. Chỉ phía ESP32 có trở 1kΩ, để bảo vệ ESP32 và chip đang test khi hai bên lỡ xuất ngược mức nhau. Giữa các chip không cần trở, vì ngoài chip đang test thì không chip nào xuất tín hiệu.</figcaption>
+    </figure>
+    {{CHANNELS}}
+  </section>
+
+  <section>
+    <h2>Đi dây theo bước</h2>
+    <p class="note">Lỗ ghi dạng <code>F:8b</code> = mini F4P6, hàng 8, cột b. Tên các mini: <code>EL</code> / <code>ER</code> là 2 mini của ESP32 (trái / phải), <code>F</code> là mini F4P6, <code>C</code> là mini chip. Mini có 17 hàng, cột a–e và f–j nằm hai bên rãnh giữa.</p>
+    <div class="cols">
+      <div>
+        <h3><span class="n">Bước 1</span>Đặt linh kiện</h3>
+        <div class="boards">
+          <div><b>EL + ER</b><span>ESP32 vắt qua 2 mini, <b>USB hướng lên</b>. Chân 3V3 ở <code>EL:2j</code>, chân VIN ở <code>ER:2a</code>.</span></div>
+          <div><b>F</b><span>TWEN32F003 ở hàng 1–11, chân ở cột c và h, USB-C hướng lên. Đặt mini F <b>thấp hơn mini ESP32 3 hàng</b>: hàng 1 của F ngang hàng 4 của ER.</span></div>
+          <div><b>C</b><span>Ngay dưới F. A4M6 (DIP16) ở hàng 3–10, <b>xoay 180°</b>: chân 1 ở <code>C:10g</code> (dưới-phải). J4M6 (DIP8) ở hàng 12–15, chân 1 ở <code>C:12d</code> (trên-trái). Nửa phải hàng 17 là đường 3V3 cho pull-up.</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="steps">{{STEPS}}</div>
+  </section>
+
+  <section>
+    <h2>Nguồn từng chip</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Chip</th><th>Chân ESP32</th><th>Bình thường</th><th>Khi cần khởi động lại để nạp</th></tr></thead>
+      <tbody>
+        <tr><td>F4P6</td><td class="m">GPIO2 (D2)</td><td class="m">HIGH</td><td>LOW khoảng 50ms → HIGH</td></tr>
+        <tr><td>A4M6</td><td class="m">GPIO22</td><td class="m">HIGH</td><td>LOW khoảng 50ms → HIGH</td></tr>
+        <tr><td>J4M6</td><td class="m">GPIO23</td><td class="m">HIGH</td><td>LOW khoảng 50ms → HIGH</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Mỗi chip tiêu thụ dưới 20mA. Firmware ESP32 sẽ đặt drive strength của 3 chân này ở mức cao nhất (khoảng 40mA). GPIO2 trên DevKit có LED xanh, LED sáng khi F4P6 có nguồn là bình thường.</p>
+  </section>
+
+  <section>
+    <h2>Linh kiện</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Linh kiện</th><th>Số lượng</th><th>Dùng ở</th></tr></thead>
+      <tbody>
+        <tr><td>Trở 1kΩ</td><td class="m">16</td><td>16 kênh tín hiệu phía ESP32</td></tr>
+        <tr><td>Trở 4.7kΩ</td><td class="m">2</td><td>Pull-up I2C (PC1, PC2)</td></tr>
+        <tr><td>Tụ 100nF</td><td class="m">2</td><td>VDD của A4M6 và J4M6</td></tr>
+        <tr><td>Breadboard mini 170 lỗ</td><td class="m">4</td><td>2 cho ESP32, 1 cho F4P6, 1 cho A4M6 + J4M6</td></tr>
+        <tr><td>Dây đực–đực</td><td class="m">khoảng 55</td><td>16 dây ESP32 → F4P6, 12 dây F4P6 → A4M6, 8 dây A4M6 → J4M6 và SWIO, còn lại là nguồn/GND</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Không cần transistor, 74HC4066, trở xả hay PCF8574.</p>
+  </section>
+
+  <section>
+    <h2>Kiểm tra sau khi lắp</h2>
+    <ol class="seq">
+      <li>Chưa cắm chip: cấp nguồn ESP32 bằng USB, kiểm tra ESP32 boot và nạp firmware bình thường.</li>
+      <li>Đo thông mạch GND giữa ESP32, WCH-LinkE và chân GND của 3 chip.</li>
+      <li>Cắm chip. Nạp firmware đỗ cho từng chip riêng lẻ: mỗi lần chỉ cắm dây SWIO vào một chip.</li>
+      <li>Cắm lại dây SWIO chung. Tắt/bật nguồn từng chip rồi chạy <code>minichlink -i</code> ngay sau đó. Mỗi lần phải nhận đúng chip vừa khởi động lại.</li>
+      <li>Không nhấn nút trên TWEN32F003 khi đang test (nút nối chân C0 xuống GND).</li>
+    </ol>
+  </section>
+</div>

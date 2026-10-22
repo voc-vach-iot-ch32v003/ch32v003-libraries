@@ -1,2 +1,11 @@
 .pio
 .idea
+.vscode
+*.code-workspace
+
+# Đặc tả phần cứng bàn test HIL (chỉ lưu cục bộ, không đẩy lên repo)
+test/HIL_SPEC.md
+
+# Kết quả chạy HIL (log, báo cáo JSON)
+test/runner/reports/
+__pycache__/
