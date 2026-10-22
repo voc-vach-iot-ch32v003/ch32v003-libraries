@@ -54,7 +54,7 @@ int main(void)
 | Logic thuần trên máy tính | `test/host/run.sh` | gcc, không cần phần cứng (intmath...) |
 | Build mọi thư viện × 3 chip | `pio run -d test/ch32v003` | env `smoke_*`; build phải sạch warning của thư viện |
 | Kiểm tra bàn test | `$PY test/runner/bench_check.py` | ESP32 + WCH-LinkE + 3 chip |
-| Test HIL một thư viện | `$PY test/runner/hil.py <suite> [--chip F4P6 A4M6 J4M6]` | firmware `test/ch32v003/src/<suite>/` + kịch bản `test/runner/suites/<suite>.py`; suite hiện có: `gpio`, `timing`, `intmath`, `timer_wrap` (~2 phút/chip) |
+| Test HIL một thư viện | `$PY test/runner/hil.py <suite> [--chip F4P6 A4M6 J4M6]` | firmware `test/ch32v003/src/<suite>/` + kịch bản `test/runner/suites/<suite>.py`; suite hiện có: `gpio`, `timing`, `intmath`, `i2c`, `timer_wrap` (~2 phút/chip) |
 | Code mẫu README biên dịch được | `$PY test/runner/check_readme.py <lib...>` | trích khối ```c ở mục Quick Start, build 3 chip |
 
 `$PY` = `/mnt/data/.system/environments/penv/bin/python` (python của PlatformIO, có sẵn `pyserial`). `minichlink` ở `~/.platformio/packages/tool-minichlink/minichlink`.
@@ -66,6 +66,7 @@ int main(void)
 - SWIO của 3 chip **nối chung** vào một WCH-LinkE. Chip không test chạy **firmware đỗ** (`test/ch32v003/src/park/`): chân Hi-Z, tắt SWD sau 1 giây. Muốn nạp chip X: đưa 16 kênh về Hi-Z → `RST X` (tắt nguồn 50ms) → nạp trong cửa sổ 1 giây → sau khi test xong nạp lại firmware đỗ.
 - Nhận diện chip qua `minichlink -i` → `Part Type`: `00-30` F4P6, `00-32` A4M6, `00-33` J4M6. Part Type/UUID "lạ" = **2 chip cùng trả lời** (dữ liệu là AND bit) → có chip bị reset theo / dây cắm nhầm.
 - Lệnh ESP32 (Serial 115200, mỗi lệnh 1 dòng, trả lời `OK ...`/`ERR ...`): xem đầu `test/esp32/src/main.cpp`.
+- I2C slave của ESP32 (`I2CS`, CH13/CH14): ESP32 bản gốc **không kéo giãn SCL** → dữ liệu master sẽ đọc phải nạp trước bằng `I2CS LOAD`; `Z ALL` tự tắt slave.
 - Firmware test trên CH32 báo kết quả qua SWIO bằng dòng `HIL:...` (xem `test/ch32v003/include/hil.h`). Phép đo thời gian phải so theo **clock thật của từng chip** (HSI lệch tới ±2%): suite `timing` lấy `delayMs` làm thước đo.
 - Thêm suite mới: tạo `src/<suite>/main.c`, 3 env `<suite>_<chip>` trong `test/ch32v003/platformio.ini`, và `test/runner/suites/<suite>.py` có `on_wait(step, bench, ctx)`.
 

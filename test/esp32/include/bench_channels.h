@@ -54,12 +54,12 @@ bool benchWriteDac(int channel, uint8_t value);
 /**
  * @brief Bắt các sườn tín hiệu trên kênh (thăm dò bận, độ phân giải ~0.1us).
  * @param startLevel Trả về mức logic lúc bắt đầu.
- * @param durationsUs Mảng nhận độ dài (us) của từng đoạn mức logic liên tiếp.
+ * @param durations Mảng nhận độ dài từng đoạn mức logic liên tiếp (us, hoặc ns nếu nanoseconds = true).
  * @param timeoutMs Chờ sườn đầu tiên tối đa timeoutMs; sau đó dừng khi im lặng quá idleUs.
  * @return Số đoạn đã ghi.
  */
-uint16_t benchCapture(int channel, int& startLevel, uint32_t* durationsUs, uint16_t maxCount,
-                      uint32_t timeoutMs, uint32_t idleUs);
+uint16_t benchCapture(int channel, int& startLevel, uint32_t* durations, uint16_t maxCount,
+                      uint32_t timeoutMs, uint32_t idleUs, bool nanoseconds = false);
 
 /**
  * @brief Đếm sườn lên trên kênh trong windowMs, quy đổi ra tần số (Hz).

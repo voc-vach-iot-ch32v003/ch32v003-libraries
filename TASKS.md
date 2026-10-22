@@ -2,7 +2,7 @@
 
 Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đang làm · ⬜ chưa làm · 🧪 cần chạy HIL trên phần cứng.
 
-> Lưu ý chung: chưa có thay đổi nào được commit. Mọi mục ✅ mới chỉ được **build thử**, chưa chạy trên phần cứng.
+> Thư viện đã phát hành thì đã chạy HIL trên phần cứng. Các mục ✅ của thư viện chưa phát hành mới chỉ được **build thử**.
 
 ## Thứ tự xử lý (thư viện ít phụ thuộc trước)
 
@@ -34,8 +34,10 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | `ch32v003_intmath` | v1.0.1 | 2026-10-22 | sửa atan2/magnitude, cấu trúc `src/` |
 | `ch32v003_timer` | v1.1.0 | 2026-10-22 | sửa tràn 89s, `timerInit()`, `micros()` nhanh hơn |
 | `ch32v003_gpio` | v2.0.0 | 2026-10-22 | ⚠️ đổi tên type `GPIO_*_t`, `MCU_PIN_NONE` |
+| `ch32v003_i2c` | v1.1.0 | 2026-10-22 | không kẹt bus khi NACK, Fast Mode, `i2cWriteBurst`, SW ~100kHz |
 
 `delay`, `debug` giữ v1.0.0: thay đổi chỉ là định dạng Doxygen + `.gitignore` → đã commit, không phát hành.
+`timer`, `gpio`: sửa chú thích `MCU_PIN3` trong README (PA2 chỉ đúng với J4M6; A4M6 là PC3, F4P6 là PD6) → commit, không phát hành.
 
 ## Tầng 0
 
@@ -83,8 +85,12 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ Reset khối I2C1 + tắt PE trước khi cấu hình; đọc 1 byte: tắt ACK trước khi xóa ADDR.
 - ✅ I2C mềm: lấy mẫu ACK 1 lần (bỏ vòng chờ 30000 lần khi NACK).
 - ✅ Thêm `i2cWriteBurst()`. Dọn rác sau `#endif` trong `.h`.
-- ⬜ README + library.json.
-- 🧪 HIL: ESP32 đóng vai I2C slave (ghi/đọc thanh ghi, NACK địa chỉ sai, 100k/400k, HW + SW).
+- ✅ **Bug:** `i2cStop()` gọi thừa sau `i2cRead(0)` (STOP đã tự phát) đặt lại bit STOP khi không còn là Master. → Chỉ phát STOP khi còn MSL.
+- ✅ **Tối ưu:** I2C phần mềm 37kHz → ~100kHz, macro `I2C_SOFTWARE_DELAY_LOOPS` (mặc định 5).
+- ✅ README viết lại theo docs-core (Quick Start qua `check_readme.py`), library.json dependencies dạng object, mã nguồn vào `src/`.
+- ✅ HIL `i2c` (2026-10-22, 48/48 × 3 chip): ESP32 làm slave 0x42; HW 100k / HW 400k / SW: ghi burst, đọc burst 1/2/4 byte, API rời + `i2cStop` thừa, NACK rồi giao dịch tiếp, SCL đo được 97.7k / 381k / 95–98kHz.
+- ✅ Mẫu đối chứng: tắt bản sửa NACK → bus kẹt, hàng loạt LỖI ⇒ bài test bắt được lỗi gốc.
+- ⬜ Chưa test Remap 1/2 (F4P6): PD0/PD1 trùng SWIO, PC5/PC6 không có trở kéo lên trên bàn test.
 
 ### `ch32v003_spi`
 - ✅ **Bug:** F4P6 không biên dịch được (`NSS_PC0` không tồn tại).
@@ -152,9 +158,9 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ `test/ch32v003/` project build mọi thư viện × 3 chip (env `smoke_*`).
 - ✅ `test/host/` test logic thuần trên máy tính (intmath).
 - ✅ `test/WIRING.md` + `test/wiring/gen.py` — bản vẽ ESP32 30 chân (2 mini) ↔ F4P6 (TWEN32F003) ↔ A4M6/J4M6. Cả 3 chip luôn có nguồn từ GPIO (GPIO2 → F4P6, GPIO22 → A4M6, GPIO23 → J4M6; ESP32 USB hướng lên, A4M6 xoay 180°), SWIO nối chung, chip không test chạy firmware đỗ.
-- ✅ Firmware đỗ `test/ch32v003/src/park/` (env `park_J4M6/A4M6/F4P6`, 1148 byte Flash): mọi chân Hi-Z, `delayMs(1000)` (cửa sổ nạp), in `HIL:PARKED <chip>`, `setSwioMode(SWIO_MODE_GPIO)`, ngủ `WFI`. 🧪 Chưa nạp thử trên phần cứng.
-- ⬜ `CLAUDE.md` — quy trình làm việc, quy chuẩn template, cách chạy test, quy tắc bắt buộc `delayMs(1000)` đầu `main()`.
-- 🔧 Firmware ESP32 `test/esp32/`: ✅ phần nguồn (`PING`, `PWR <chip|ALL> <ON|OFF>`, `RST <chip> [ms]`, `STATUS`; khởi động thì bật cả 3 chip). ✅ Lệnh 16 kênh (`Z`, `MODE`, `W`/`ON`/`OFF`, `R`, `RA`, `ADC`, `DAC`, `CAP`, `FREQ`). ⬜ `I2CS`, `SPIS`, `UART` (làm cùng thư viện tương ứng).
+- ✅ Firmware đỗ `test/ch32v003/src/park/` (env `park_J4M6/A4M6/F4P6`, 1148 byte Flash): mọi chân Hi-Z, `delayMs(1000)` (cửa sổ nạp), in `HIL:PARKED <chip>`, `setSwioMode(SWIO_MODE_GPIO)`, ngủ `WFI`. ✅ Chạy trên phần cứng.
+- ✅ `CLAUDE.md` — quy trình làm việc, quy chuẩn template, cách chạy test, quy tắc phát hành.
+- 🔧 Firmware ESP32 `test/esp32/`: ✅ phần nguồn (`PING`, `PWR <chip|ALL> <ON|OFF>`, `RST <chip> [ms]`, `STATUS`; khởi động thì bật cả 3 chip). ✅ Lệnh 16 kênh (`Z`, `MODE`, `W`/`ON`/`OFF`, `R`, `RA`, `ADC`, `DAC`, `CAP [NS]`, `FREQ`, `INTERVAL`). ✅ `I2CS ON/OFF/LOAD/RX` (I2C slave, nạp sẵn dữ liệu vì ESP32 gốc không kéo giãn SCL). ⬜ `SPIS`, `UART` (làm cùng thư viện tương ứng).
 - ✅ `test/runner/bench_check.py`: kiểm tra bàn test — ĐẠT trên phần cứng (2026-10-22): cả 3 chip đỗ thì không ai trả lời; khởi động lại từng chip → nạp đúng chip trong cửa sổ 1 giây (F4P6 `0x0030`, A4M6 `0x0032`, J4M6 `0x0033`).
 - ✅ Runner `test/runner/hil.py <suite>`: Hi-Z → RST chip → nạp + mở terminal SWIO trong cửa sổ 1s (kiểm tra Part Type để chặn nạp nhầm chip) → xử lý `HIL:WAIT/CHECK/END` → nạp lại firmware đỗ → báo cáo JSON `test/runner/reports/`.
 - ✅ `test/runner/check_readme.py <lib...>`: biên dịch Quick Start của README trên 3 chip.

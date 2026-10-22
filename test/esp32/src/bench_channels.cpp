@@ -123,8 +123,8 @@ bool benchWriteDac(const int channel, const uint8_t value)
     return true;
 }
 
-uint16_t benchCapture(const int channel, int& startLevel, uint32_t* durationsUs, const uint16_t maxCount,
-                      const uint32_t timeoutMs, const uint32_t idleUs)
+uint16_t benchCapture(const int channel, int& startLevel, uint32_t* durations, const uint16_t maxCount,
+                      const uint32_t timeoutMs, const uint32_t idleUs, const bool nanoseconds)
 {
     const uint8_t gpio = gpioOf(channel);
     const uint32_t cyclesPerUs = ESP.getCpuFreqMHz();
@@ -153,7 +153,7 @@ uint16_t benchCapture(const int channel, int& startLevel, uint32_t* durationsUs,
         const uint32_t t = cycles();
         if (now != level)
         {
-            durationsUs[count++] = (t - edge) / cyclesPerUs;
+            durations[count++] = t - edge; // Lưu số chu kỳ, quy đổi sau khi mở ngắt
             level = now;
             edge = t;
         }
@@ -163,6 +163,11 @@ uint16_t benchCapture(const int channel, int& startLevel, uint32_t* durationsUs,
         }
     }
     portENABLE_INTERRUPTS();
+
+    for (uint16_t i = 0; i < count; i++)
+    {
+        durations[i] = nanoseconds ? (uint32_t)((uint64_t)durations[i] * 1000 / cyclesPerUs) : durations[i] / cyclesPerUs;
+    }
 
     // Đoạn cuối (đang giữ mức) không có sườn kết thúc nên không tính; startLevel là mức TRƯỚC sườn đầu tiên
     return count;
