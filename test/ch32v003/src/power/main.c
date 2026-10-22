@@ -9,6 +9,10 @@
 // - WAKE_A (PA2, CH11) / WAKE_B (PC4, CH16): ESP32 tạo sườn để đánh thức.
 // Kiểm tra: từ chối ngủ khi không có nguồn đánh thức, thức bằng chân (3 kiểu sườn, 2 chân), thức bằng hẹn giờ
 // (độ dài + công thức AWU), chân cắt ngang hẹn giờ, RAM giữ nguyên + chạy tiếp (không reset), giữ chế độ SWIO.
+// Standby thật hay không (không cần đo dòng): nhánh Standby của thư viện KHÔNG tắt PLL, nên nếu sau khi thức
+// cờ PLLRDYF bật (PLL phải khóa lại) thì chính phần cứng đã tắt PLL = chip đã vào chế độ tắt clock thật.
+// Với Sleep, thư viện tự tắt/bật PLL -> PLLRDYF = 1 là đối chứng cho thấy cơ chế cờ hoạt động.
+// (HSIRDYF không bật khi phần cứng tự khởi động lại HSI nên không dùng làm bằng chứng, chỉ in ra để tham khảo.)
 
 #define MARKER_PIN ((MCU_PORT_INDEX_A << 4) | 1)
 #define WAKE_A_PIN ((MCU_PORT_INDEX_A << 4) | 2)
@@ -29,14 +33,25 @@ static void markerPulse(void)
 static uint8_t sleepOnce(const PowerEnter_t enter, const char* mode, const char* what)
 {
     ramMagic = 0xC0FFEE00;
+    RCC->INTR = RCC_HSIRDYIE | RCC_PLLRDYIE | RCC_HSIRDYC | RCC_PLLRDYC; // Xóa cờ sẵn sàng (IE bật để cờ được ghi; NVIC không bật)
     digitalWrite(MARKER_PIN, HIGH);
     const uint8_t slept = enter();
     digitalWrite(MARKER_PIN, LOW);
     markerPulse();
+    const uint32_t flags = RCC->INTR;
+    const uint8_t hsiRestarted = (flags & RCC_HSIRDYF) != 0;
+    const uint8_t pllRelocked = (flags & RCC_PLLRDYF) != 0;
+    RCC->INTR = RCC_HSIRDYC | RCC_PLLRDYC;
     delayMs(50); // SWD vừa bật lại: chờ mạch nạp đồng bộ SWIO rồi mới in, tránh mất dòng kết quả
 
     mini_snprintf(text, sizeof(text), "ram_kept_%s_%s", what, mode);
     hilCheck(text, ramMagic == 0xC0FFEE00, "");
+
+    const uint8_t deep = mode[1] == 't'; // "standby"
+    mini_snprintf(text, sizeof(text), "%s_%s_%s", deep ? "pll_off_by_hw" : "pll_flag_ctrl", what, mode);
+    char detail[24];
+    mini_snprintf(detail, sizeof(detail), "PLLRDYF=%u HSIRDYF=%u", pllRelocked, hsiRestarted);
+    hilCheck(text, pllRelocked, detail);
     return slept;
 }
 

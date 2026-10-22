@@ -117,6 +117,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ Ví dụ viết lại: `01_sleep_button_wakeup`, `02_standby_button_timer` (build 3 gói vỏ với thư viện local). README viết lại (Quick Start qua `check_readme.py`).
 - ✅ HIL `power` (2026-10-22, 53/53 × 3 chip): Sleep + Standby × (từ chối khi không có nguồn, 3 kiểu sườn + không thức sớm, 2 chân, hẹn giờ 2000/5200ms + công thức `(W+1)·P` khớp 0.1%, chân cắt ngang hẹn giờ 20s, RAM giữ), hẹn giờ 32s nhiều lần AWU, SWIO GPIO giữ sau khi thức.
 - ✅ Mẫu đối chứng: khôi phục hành vi cũ (luôn bật lại SWD) → 2 LỖI ⇒ bài test bắt được lỗi.
+- ✅ Bằng chứng Standby thật (không cần đo dòng): nhánh Standby không tắt PLL, nhưng sau khi thức cờ `PLLRDYF` = 1 → phần cứng đã tắt PLL. 70/70 × 3 chip (J4M6 cũng vào Standby thật). Đối chứng âm: bỏ PDDS/SLEEPDEEP → `PLLRDYF` = 0, bài test báo LỖI. (`HSIRDYF` không bật khi phần cứng tự khởi động lại HSI → không dùng được.)
 - ⬜ Dòng tiêu thụ (~10µA Standby) chưa đo được trên bàn test (chỉ là số datasheet).
 
 ### `ch32v003_ir`
