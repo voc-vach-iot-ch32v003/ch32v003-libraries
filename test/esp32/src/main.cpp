@@ -5,6 +5,7 @@
 #include "bench_i2c.h"
 #include "bench_spi.h"
 #include "bench_ir.h"
+#include "bench_ws2812.h"
 
 // Firmware bàn test HIL: nhận lệnh văn bản qua Serial 115200, mỗi lệnh 1 dòng, trả lời 1 dòng "OK ..." / "ERR ...".
 // <ch> nhận số kênh (3), tên kênh (CH3) hoặc tên net (PD2).
@@ -40,6 +41,10 @@
 //                                   bit 0 của byte đầu phát trước; khung > 1: NEC thêm mã lặp, SAMSUNG/SONY lặp nguyên khung
 //   IRCAP <ch> [timeoutMs] [gapUs] -> OK IRCAP <net> <Hz sóng mang> <duty %> <n> <mark> <space> <mark>... (us),
 //                                   bắt tín hiệu có sóng mang (rảnh LOW), dừng khi LOW quá gapUs (mặc định 20000)
+//   WSCAP <ch> [timeoutMs] [idleUs] -> OK WSCAP <net> <số khung> <hex khung 1>[:<số bit>] ... h0=<min>-<max>
+//                                   h1=<min>-<max> lo=<min>-<max> gap=<min> (ns): bắt khung WS2812 bằng RMT
+//                                   (12.5ns), bit 1 khi HIGH >= 600ns, khung mới khi LOW > 50us, dừng khi LOW
+//                                   quá idleUs (mặc định 100, tối đa 400), tối đa 500 bit
 
 static const uint8_t MAX_WORDS = 6;
 static String lineBuffer;
@@ -423,6 +428,46 @@ static void cmdIrCapture(const String& target, const String& timeoutMs, const St
     Serial.println();
 }
 
+static void cmdWsCapture(const String& target, const String& timeoutMs, const String& idleUs)
+{
+    const int ch = channelArg(target);
+    if (ch < 0) return;
+    static BenchWsCapture_t r;
+    if (!benchWsCapture(ch, timeoutMs.length() ? timeoutMs.toInt() : 1000, idleUs.length() ? idleUs.toInt() : 100, r))
+    {
+        Serial.printf("ERR WSCAP %s không có tín hiệu\n", BENCH_CHANNELS[ch].net);
+        return;
+    }
+    Serial.printf("OK WSCAP %s %u", BENCH_CHANNELS[ch].net, r.frameCount);
+    uint16_t bit = 0;
+    for (uint8_t f = 0; f < r.frameCount; f++)
+    {
+        // Mỗi khung in từ bit đầu của nó (khung sau nối tiếp bit trong mảng data)
+        Serial.print(' ');
+        if (r.frameBits[f] == 0) Serial.print('-');
+        for (uint16_t i = 0; i < r.frameBits[f]; i += 8)
+        {
+            uint8_t value = 0;
+            for (uint8_t k = 0; k < 8 && i + k < r.frameBits[f]; k++)
+            {
+                const uint16_t b = bit + i + k;
+                if (r.data[b / 8] & (0x80 >> (b % 8))) value |= 0x80 >> k;
+            }
+            Serial.printf("%02X", value);
+        }
+        if (r.frameBits[f] % 8) Serial.printf(":%u", r.frameBits[f]);
+        bit += r.frameBits[f];
+    }
+    auto range = [](const char* name, uint32_t lo, uint32_t hi) {
+        if (lo == UINT32_MAX) Serial.printf(" %s=-", name);
+        else Serial.printf(" %s=%lu-%lu", name, (unsigned long)lo, (unsigned long)hi);
+    };
+    range("h0", r.high0Min, r.high0Max);
+    range("h1", r.high1Min, r.high1Max);
+    range("lo", r.lowMin, r.lowMax);
+    Serial.printf(" gap=%lu\n", (unsigned long)r.gapMin);
+}
+
 // ============================================================================
 // BỘ PHÂN TÍCH LỆNH
 // ============================================================================
@@ -466,6 +511,7 @@ static void handleLine(String line)
     else if (cmd == "SNIFF") cmdSpiSniff(w);
     else if (cmd == "IRTX") cmdIrSend(w[1], w[2], w[3], w[4]);
     else if (cmd == "IRCAP") cmdIrCapture(w[1], w[2], w[3]);
+    else if (cmd == "WSCAP") cmdWsCapture(w[1], w[2], w[3]);
     else Serial.printf("ERR unknown command '%s'\n", w[0].c_str());
 }
 

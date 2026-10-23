@@ -55,7 +55,7 @@ int main(void)
 | Logic thuần trên máy tính | `test/host/run.sh` | gcc, không cần phần cứng (intmath...) |
 | Build mọi thư viện × 3 chip | `pio run -d test/ch32v003` | env `smoke_*`; build phải sạch warning của thư viện |
 | Kiểm tra bàn test | `$PY test/runner/bench_check.py` | ESP32 + WCH-LinkE + 3 chip |
-| Test HIL một thư viện | `$PY test/runner/hil.py <suite> [--chip F4P6 A4M6 J4M6]` | firmware `test/ch32v003/src/<suite>/` + kịch bản `test/runner/suites/<suite>.py`; suite hiện có: `gpio`, `timing`, `intmath`, `i2c`, `spi`, `max7219`, `led_matrix`, `ir`, `bmi160`, `power` (~1 phút/chip), `timer_wrap` (~2 phút/chip), `current` (J4M6, cần máy đo Uno) |
+| Test HIL một thư viện | `$PY test/runner/hil.py <suite> [--chip F4P6 A4M6 J4M6]` | firmware `test/ch32v003/src/<suite>/` + kịch bản `test/runner/suites/<suite>.py`; suite hiện có: `gpio`, `timing`, `intmath`, `i2c`, `spi`, `max7219`, `led_matrix`, `ir`, `bmi160`, `ws2812`, `power` (~1 phút/chip), `timer_wrap` (~2 phút/chip), `current` (J4M6, cần máy đo Uno) |
 | Code mẫu README biên dịch được | `$PY test/runner/check_readme.py <lib...>` | trích khối ```c ở mục Quick Start, build 3 chip |
 
 `$PY` = `/mnt/data/.system/environments/penv/bin/python` (python của PlatformIO, có sẵn `pyserial`). `minichlink` ở `~/.platformio/packages/tool-minichlink/minichlink`.
@@ -70,6 +70,7 @@ int main(void)
 - I2C slave của ESP32 (`I2CS`, CH13/CH14): ESP32 bản gốc **không kéo giãn SCL** → dữ liệu master sẽ đọc phải nạp trước bằng `I2CS LOAD`; `Z ALL` tự tắt slave. Byte nạp thừa nằm lại FIFO và làm hỏng các lần ghi sau → mỗi lần nạp phải được đọc hết. Thư viện đọc nhiều thanh ghi trong một hàm: link firmware test với `-Wl,--wrap=i2cReadBurst` (+ `build_unflags = -flto`) để báo runner nạp ngay trước từng lần đọc (xem suite `bmi160`). Bus cần 2 trở kéo lên 4.7kΩ tại J4M6: `MODE PC1 PD` rồi `R PC1` phải đọc 1.
 - IR (`IRTX` / `IRCAP`): ESP32 phát khung đã giải điều chế như mắt thu (rảnh HIGH) và bắt tín hiệu có sóng mang (đường bao + Hz + duty); thời gian chuẩn của giao thức đặt độc lập trong `test/esp32/src/bench_ir.cpp` và `suites/ir.py`.
 - Nghe lén SPI (`SNIFF <sck> <mosi> <cs>`): bắt nhiều khung CS liền nhau (SPI slave chỉ nhận 1 giao dịch nạp sẵn). Đặt cả 3 chân trên GPIO < 32 của ESP32 (VD CS = PC2), SCK ≤ ~750kHz. Kết quả kèm `gap=<ns>`: lớn hơn nửa chu kỳ SCK là ESP32 bị dừng tạm (core 0 dừng core 1 bằng ngắt mức cao, không khóa được) → làm lại thao tác. Dùng chung: `test/runner/spi_sniff.py` + `test/ch32v003/include/sniff.h` (macro `SNIFFED`).
+- Bắt khung WS2812 (`WSCAP <ch> [timeoutMs] [idleUs]`): RMT 12.5ns, giải mã byte (bit 1 khi HIGH ≥ 600ns, khung mới khi LOW > 50us) + min/max HIGH bit 0 / bit 1 / LOW và khoảng giữa 2 khung; tối đa 500 bit (~20 LED). Bit-bang test trên PC4, SPI DMA trên PC6.
 - SPI slave của ESP32 (`SPIS`): mỗi giao dịch (CS xuống-lên) phải `SPIS LOAD` trước. SPI1 phần cứng chỉ có trên F4P6 (PC5/PC6/PC7, CS PC0); SPI mềm test trên PC4/PA2/PA1, CS PC1 (có trên cả 3 chip).
 - Đo thời gian bằng `CAP`: sườn đầu tiên bị phát hiện trễ vài µs → đo khoảng ≥ 50µs, hoặc dùng `CAP ... NS` + trung vị nhiều chu kỳ.
 - Các net dùng chung cho cả 3 chip: chip nào còn chạy firmware test (runner bị dừng giữa chừng) sẽ lái net và làm sai phép đo. Runner đỗ cả 3 chip lúc bắt đầu; đừng giết runner bằng `kill -9`.

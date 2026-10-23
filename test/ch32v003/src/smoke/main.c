@@ -11,6 +11,7 @@
 #include "ch32v003_bmi160.h"
 #include "ch32v003_ir.h"
 #include "ch32v003_power.h"
+#include "ch32v003_ws2812.h"
 
 int main(void)
 {

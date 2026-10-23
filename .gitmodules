@@ -34,3 +34,6 @@
 [submodule "ch32v003_timer"]
 	path = ch32v003_timer
 	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_timer.git
+[submodule "ch32v003_ws2812"]
+	path = ch32v003_ws2812
+	url = git@vocvachiot:voc-vach-iot-ch32v003/ch32v003_ws2812.git

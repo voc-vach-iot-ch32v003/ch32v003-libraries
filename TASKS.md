@@ -13,6 +13,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | 1 | `spi` | gpio |
 | 1 | `power` | gpio, delay |
 | 1 | `ir` | gpio, debug |
+| 1 | `ws2812` | gpio |
 | 2 | `max7219` | spi |
 | 2 | `bmi160` | i2c, intmath, delay, debug |
 | 3 | `led_matrix` | max7219 |
@@ -41,6 +42,8 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | `ch32v003_power` | v2.0.1 | 2026-10-22 | tài liệu: dòng đo thực tế (Standby 6.7µA, Sleep 371µA), chân không dùng về `ANALOG`, nạp lại chip đang ngủ |
 | `ch32v003_power` | v2.0.2 | 2026-10-22 | ví dụ 02 mất printf (PD1 ANALOG), chi phí hẹn giờ +1.2µA |
 | `ch32v003_power` | v2.0.3 | 2026-10-22 | kéo lên SWIO trong lúc ngủ: chân bỏ trống không còn đánh thức chip liên tục |
+| `ch32v003_bmi160` | v2.0.0 | 2026-10-23 | ⚠️ `BMI160_DriverHandle_t`, sửa dải Gyro 2000 dps, Tau bộ lọc bù |
+| `ch32v003_ws2812` | v1.0.0 | 2026-10-23 | thư viện mới: bit-bang mọi chân + SPI DMA (PC6), thứ tự màu, độ sáng |
 
 `delay`, `debug` giữ v1.0.0: thay đổi chỉ là định dạng Doxygen + `.gitignore` → đã commit, không phát hành.
 `timer`: sửa chú thích `MCU_PIN3` trong README (PA2 chỉ đúng với J4M6; A4M6 là PC3, F4P6 là PD6) → commit, không phát hành.
@@ -167,6 +170,15 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ README (Quick Start qua `check_readme.py`), `library.json` ghim i2c `v1.1.1`, intmath `v1.0.1`, delay / debug `v1.0.0`; 2 ví dụ (`01_tilt_angles` đo `deltaTime` bằng `millis()`, `02_gravity_vector`).
 - ✅ HIL (`suites/bmi160.py`): ESP32 I2C slave 0x69 giả lập thanh ghi; firmware link `-Wl,--wrap=i2cReadBurst` (env tắt LTO) để báo runner nạp byte ngay trước từng lần đọc. So chuỗi ghi cấu hình (dải 2000 dps = 0x00), sai Chip ID / PMU / NACK, thời gian chờ khởi động, đọc 12 byte, hiệu chuẩn (+ rung, + đổi trục); trên chip: góc gia tốc, Tau ở dt 5/10/100ms, tích phân con quay 2 dải, đổi trục, vector 2D độc lập giữa 2 cảm biến.
 - ℹ️ Bàn test 2026-10-23: 2 trở kéo lên I2C bị rời (sau thí nghiệm máy đo tụ) → suite i2c lỗi toàn bộ; đã cắm lại. Kiểm tra nhanh: `MODE PC1 PD` rồi `R PC1` phải đọc 1.
+
+### `ch32v003_ws2812` — ✅ v1.0.0 (thư viện mới; HIL: F4P6 46/46, A4M6 46/46, J4M6 24/24)
+- ✅ Thiết kế (người dùng chọn 2026-10-23): bit-bang + SPI DMA, LED RGB có chọn thứ tự màu, độ sáng toàn dải. Repo `voc-vach-iot-ch32v003/ch32v003_ws2812` (public).
+- ✅ Bit-bang: vòng asm đếm chu kỳ (`.balign 4`, nop tính theo `FUNCONF_SYSTEM_CORE_CLOCK`), đo RMT: T0H 337–375ns, T1H 775–812ns, chu kỳ ~1.3us. Phát từng byte, tính độ sáng byte kế bằng bảng 16 bội số (RV32EC không có lệnh nhân) → LOW giữa 2 byte ≤ 2.7us ở mọi độ sáng (bản đầu gọi `encodeLed` + `__mulsi3`: 5–6us). Tắt ngắt từng cụm 8 LED, cửa sổ mở ngắt 8 nop (1 nop không đủ để lõi nhận ngắt → `millis()` đứng, test `millis_running` bắt được).
+- ✅ SPI DMA (PC6, A4M6 / F4P6): 8 bit SPI / bit LED ở 6MHz (HIGH 333 / 833ns), bộ đệm quay vòng 4 LED, ngắt HT/TC nạp nửa đã phát. **MOSI nghỉ ở mức MSB của word cuối đã phát** (đo trên chip) → khi dừng DMA phát thêm 1 word 0, nếu không dây treo HIGH giữa 2 khung.
+- ✅ Tự giữ thời gian chốt `WS2812_RESET_US` (300us) giữa 2 lần show (đo 300–338us).
+- ✅ README (Quick Start qua `check_readme.py`), `library.json` ghim gpio `v2.0.1`, 2 ví dụ (`01_color_basics` bit-bang, `02_dma_background`).
+- ✅ HIL (`suites/ws2812.py`): ESP32 lệnh mới `WSCAP` (RMT 12.5ns) giải mã khung + đo độ rộng xung; so byte với mô hình Python (3 thứ tự màu, độ sáng 128 / 0, fill, 2 khung liền nhau, dải 16 LED); trên chip: từ chối tham số sai, Set/Get không ghi tràn, thời lượng phát, DMA không chặn CPU, `millis()` vẫn đúng khi phát 100 LED.
+- ⬜ Để sau (người dùng chưa cần): đổi màu HSV / bánh xe màu, bảng gamma, hiệu ứng có sẵn (rainbow, chase, fade), LED RGBW (SK6812 RGBW).
 
 ## Tầng 3
 
