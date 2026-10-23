@@ -19,7 +19,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 ## Việc chung cho MỌI thư viện (checklist template)
 
-- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>#v<x.y.z>" }`, **ghim tag phát hành ổn định gần nhất** (cả `lib_deps` của ví dụ). Đã xong: i2c 1.1.1, spi 2.0.1, power 2.0.5, ir 2.0.1, max7219 2.0.1 (bản vá chỉ ghim deps, 2026-10-23). led_matrix 2.0.0. Còn: bmi160.
+- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>#v<x.y.z>" }`, **ghim tag phát hành ổn định gần nhất** (cả `lib_deps` của ví dụ). Đã xong: i2c 1.1.1, spi 2.0.1, power 2.0.5, ir 2.0.1, max7219 2.0.1 (bản vá chỉ ghim deps, 2026-10-23). led_matrix 2.0.0, bmi160 2.0.0. ✅ Đủ mọi thư viện.
 - [ ] `README.md` khớp API mới (8 mục theo `embedded-library-docs-core.md`).
 - [ ] Examples: chỉ driver/ngoại vi mới cần (đề xuất danh sách → chờ duyệt → tạo).
 - [ ] Bộ test HIL trong `test/ch32v003/src/<lib>/` + kịch bản ESP32.
@@ -155,14 +155,18 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ HIL (`suites/max7219.py`): ESP32 nghe lén SPI (`SNIFF`, CS = PC2) so từng khung CS với khung dựng theo datasheet (chuỗi 3 IC). SPI mềm test với clock lõi /8 (xung SCK 48MHz ~200ns ngắn hơn 1 lượt đọc GPIO của ESP32). Lần bắt có `gap` > 600ns → chip làm lại thao tác (core 1 ESP32 bị core 0 dừng tạm bằng ngắt mức cao, `portDISABLE_INTERRUPTS` không chặn được; đo được 4–25µs, luôn ở lần bắt đầu tiên của cấu hình hw).
 - ✅ `led_matrix` v1 (kéo max7219 / spi mới nhất) hỏng biên dịch → đã thay bằng led_matrix v2.0.0.
 
-### `ch32v003_bmi160`
-- ⬜ **Bug:** `BMI160_GYRO_RANGE_DEFAULT = 0` trùng `BMI160_GYRO_RANGE_2000_DPS = 0x00` → chọn 2000 dps thực tế chạy 250 dps (sand-glass đang dính).
-- ⬜ **Bug:** chờ gyro khởi động 60ms < 80ms theo datasheet.
-- ⬜ **Bug:** `bmi160GetNormalizedGravity2D` dùng `static` filter → 2 cảm biến dùng chung trạng thái. → Đưa vào struct.
-- ⬜ `printf` vô điều kiện trong `bmi160CalibrateZeroOffset` → `BMI160_DEBUG_LOG_ENABLE` (mặc định 0, tiết kiệm Flash).
-- ⬜ Gom code trùng: dùng `intMathMagnitude2D`, `i2cWriteBurst`/`i2cReadBurst` thay start/write/stop tay.
-- ⬜ README + library.json + examples.
-- 🧪 HIL: ESP32 giả lập BMI160 (chip ID 0xD1, thanh ghi dữ liệu) qua I2C slave.
+### `ch32v003_bmi160` — ✅ v2.0.0 (HIL: F4P6 40/40, A4M6 40/40, J4M6 40/40)
+- ✅ **Bug:** `BMI160_GYRO_RANGE_DEFAULT = 0` trùng mã thanh ghi ±2000 dps → chọn 2000 dps thực tế chạy 250 dps. → Enum dải Gyro = mã thanh ghi + 1.
+- ✅ **Bug:** chờ gyro khởi động 60ms < 80ms theo datasheet (Accel 20ms → 5ms, tối đa 3.8ms). Init xác nhận PMU_STATUS = 0x14 (cả 2 khối Normal), kiểm tra ACK từng lần ghi.
+- ✅ **Bug:** bộ lọc bù dùng trọng số cố định → Tau ghi trong tài liệu chỉ đúng khi `deltaTime = 100ms` (quét 100Hz thì Tau thực ~1/10). → Trọng số `dt / (Tau + dt)` mỗi lần gọi; trạng thái lọc 1/16 centi-độ + làm tròn (không vùng chết khi trọng số nhỏ). Lần gọi đầu lấy thẳng góc gia tốc.
+- ✅ **Bug:** độ lớn `hi + lo/2` sai tới +12% làm lệch góc gia tốc → `intMathSqrt32(a² + b²)`.
+- ✅ **Bug:** `bmi160GetNormalizedGravity2D` dùng `static` filter → 2 cảm biến dùng chung. → Trạng thái trong Handle, mẫu đầu nạp thẳng.
+- ✅ **Bug:** hiệu chuẩn lấy trung bình đầu ra bộ lọc (phụ thuộc số mẫu), không kiểm tra rung như tài liệu ghi, lấy offset trên trục chưa đổi. → Trung bình góc gia tốc, hủy nếu lệch > `BMI160_CALIBRATION_MAX_SPREAD_CENTI` (giữ offset cũ), đổi trục theo `mountOrientation`.
+- ✅ ⚠️ **Breaking:** `BMI160_DriverConfiguration_t → BMI160_DriverHandle_t`, `BMI160_AccelRange_t → BMI160_AccelerometerRange_t`, `BMI160_GyroRange_t → BMI160_GyroscopeRange_t`; `bmi160GetNormalizedGravity2D` nhận Handle không const; `BMI160_REG_STATUS → BMI160_REG_PMU_STATUS`.
+- ✅ `printf` → `BMI160_DEBUG_LOG_ENABLE`; macro cấu hình trong `_defs.h`; `i2cWriteBurst`/`i2cReadBurst`; `bmi160WriteRegister` trả ACK.
+- ✅ README (Quick Start qua `check_readme.py`), `library.json` ghim i2c `v1.1.1`, intmath `v1.0.1`, delay / debug `v1.0.0`; 2 ví dụ (`01_tilt_angles` đo `deltaTime` bằng `millis()`, `02_gravity_vector`).
+- ✅ HIL (`suites/bmi160.py`): ESP32 I2C slave 0x69 giả lập thanh ghi; firmware link `-Wl,--wrap=i2cReadBurst` (env tắt LTO) để báo runner nạp byte ngay trước từng lần đọc. So chuỗi ghi cấu hình (dải 2000 dps = 0x00), sai Chip ID / PMU / NACK, thời gian chờ khởi động, đọc 12 byte, hiệu chuẩn (+ rung, + đổi trục); trên chip: góc gia tốc, Tau ở dt 5/10/100ms, tích phân con quay 2 dải, đổi trục, vector 2D độc lập giữa 2 cảm biến.
+- ℹ️ Bàn test 2026-10-23: 2 trở kéo lên I2C bị rời (sau thí nghiệm máy đo tụ) → suite i2c lỗi toàn bộ; đã cắm lại. Kiểm tra nhanh: `MODE PC1 PD` rồi `R PC1` phải đọc 1.
 
 ## Tầng 3
 
@@ -194,4 +198,4 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 ## Ảnh hưởng tới dự án đang dùng `lib_extra_dirs`
 
-Các thay đổi ⚠️ Breaking (gpio type, spi, max7219, led_matrix, sắp tới power) làm `iot/ch32v003/sand-glass`, `led-matrix-max7219`... không build được cho tới khi sửa theo API mới.
+Các thay đổi ⚠️ Breaking (gpio type, spi, max7219, led_matrix, power, bmi160) làm `iot/ch32v003/sand-glass`, `led-matrix-max7219`... không build được cho tới khi sửa theo API mới.
