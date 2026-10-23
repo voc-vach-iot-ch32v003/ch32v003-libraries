@@ -45,6 +45,12 @@
 //                                   h1=<min>-<max> lo=<min>-<max> gap=<min> (ns): bắt khung WS2812 bằng RMT
 //                                   (12.5ns), bit 1 khi HIGH >= 600ns, khung mới khi LOW > 50us, dừng khi LOW
 //                                   quá idleUs (mặc định 100, tối đa 400), tối đa 500 bit
+//   UTX <ch> <hex> [ackCh] [breakMs] [wakeCh] -> OK UTX <net> <số byte> ack=<us>|none: đánh thức chip bằng
+//                                   xung dài breakMs (mặc định 2, 0 = không): không có wakeCh thì kéo chính kênh
+//                                   UART xuống LOW, có wakeCh thì đưa wakeCh lên HIGH rồi về LOW. Chờ 5ms rồi phát
+//                                   UART 115200 8N1 các byte hex (tối đa 255); sau đó giữ kênh HIGH (UART rảnh).
+//                                   Có ackCh: chờ sườn lên (hoặc sườn xuống nếu viết ~ackCh) tối đa 60ms sau byte
+//                                   cuối (thời gian tính từ byte cuối); "-" = không chờ
 
 static const uint8_t MAX_WORDS = 6;
 static String lineBuffer;
@@ -469,6 +475,97 @@ static void cmdWsCapture(const String& target, const String& timeoutMs, const St
 }
 
 // ============================================================================
+// UART GIẢ LẬP ESP32-C3 CỦA KHO THÔNG MINH
+// ============================================================================
+
+static volatile uint32_t utxAckAt = 0;
+static void IRAM_ATTR onUtxAck()
+{
+    if (!utxAckAt) utxAckAt = micros();
+}
+
+static void cmdUartSend(const String& target, const String& hex, const String& ackTarget, const String& breakArg,
+                        const String& wakeTarget)
+{
+    const int ch = channelArg(target);
+    if (ch < 0) return;
+    int ack = -1;
+    const bool ackFalling = ackTarget.startsWith("~");
+    if (ackTarget.length() && ackTarget != "-")
+    {
+        ack = channelArg(ackFalling ? ackTarget.substring(1) : ackTarget);
+        if (ack < 0) return;
+    }
+    int wake = -1;
+    if (wakeTarget.length())
+    {
+        wake = channelArg(wakeTarget);
+        if (wake < 0) return;
+    }
+    static uint8_t data[255];
+    uint16_t n = 0;
+    for (uint16_t i = 0; i + 1 < hex.length() && n < sizeof(data); i += 2)
+    {
+        data[n++] = (uint8_t)strtol(hex.substring(i, i + 2).c_str(), nullptr, 16);
+    }
+    if (n == 0)
+    {
+        Serial.println("ERR UTX <ch> <hex> [ackCh] [breakMs] [wakeCh]");
+        return;
+    }
+    const uint8_t gpio = BENCH_CHANNELS[ch].gpio;
+    const uint32_t breakMs = breakArg.length() ? breakArg.toInt() : 2;
+    pinMode(gpio, OUTPUT);
+    if (wake >= 0)
+    {
+        digitalWrite(gpio, HIGH);
+        const uint8_t wakeGpio = BENCH_CHANNELS[wake].gpio;
+        pinMode(wakeGpio, OUTPUT);
+        if (breakMs)
+        {
+            digitalWrite(wakeGpio, HIGH);
+            delay(breakMs);
+        }
+        digitalWrite(wakeGpio, LOW);
+        if (breakMs) delay(5);
+    }
+    else if (breakMs)
+    {
+        digitalWrite(gpio, LOW);
+        delay(breakMs);
+        digitalWrite(gpio, HIGH);
+        delay(5);
+    }
+    else
+    {
+        digitalWrite(gpio, HIGH);
+    }
+    if (ack >= 0)
+    {
+        utxAckAt = 0;
+        pinMode(BENCH_CHANNELS[ack].gpio, INPUT);
+        attachInterrupt(digitalPinToInterrupt(BENCH_CHANNELS[ack].gpio), onUtxAck, ackFalling ? FALLING : RISING);
+    }
+    Serial2.begin(115200, SERIAL_8N1, -1, gpio);
+    Serial2.write(data, n);
+    Serial2.flush();
+    const uint32_t sentAt = micros();
+    Serial2.end();
+    pinMode(gpio, OUTPUT);
+    digitalWrite(gpio, HIGH); // UART rảnh = HIGH
+
+    Serial.printf("OK UTX %s %u", BENCH_CHANNELS[ch].net, n);
+    if (ack >= 0)
+    {
+        while (!utxAckAt && micros() - sentAt < 60000) delayMicroseconds(50);
+        detachInterrupt(digitalPinToInterrupt(BENCH_CHANNELS[ack].gpio));
+        if (utxAckAt) Serial.printf(" ack=%ld", (long)(utxAckAt - sentAt));
+        else Serial.print(" ack=none");
+    }
+    Serial.println();
+}
+
+// ============================================================================
 // BỘ PHÂN TÍCH LỆNH
 // ============================================================================
 
@@ -512,6 +609,7 @@ static void handleLine(String line)
     else if (cmd == "IRTX") cmdIrSend(w[1], w[2], w[3], w[4]);
     else if (cmd == "IRCAP") cmdIrCapture(w[1], w[2], w[3]);
     else if (cmd == "WSCAP") cmdWsCapture(w[1], w[2], w[3]);
+    else if (cmd == "UTX") cmdUartSend(w[1], w[2], w[3], w[4], w[5]);
     else Serial.printf("ERR unknown command '%s'\n", w[0].c_str());
 }
 
@@ -541,7 +639,7 @@ void loop()
             handleLine(lineBuffer);
             lineBuffer = "";
         }
-        else if (lineBuffer.length() < 120)
+        else if (lineBuffer.length() < 600) // UTX mang tới 255 byte hex
         {
             lineBuffer += c;
         }
