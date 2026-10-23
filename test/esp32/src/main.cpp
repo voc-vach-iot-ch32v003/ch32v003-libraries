@@ -32,6 +32,10 @@
 //   SPIS OFF                     -> tắt SPI slave
 //   SPIS LOAD <hex|->            -> nạp 1 giao dịch: dữ liệu đẩy ra MISO (tối đa 64 byte, '-' = toàn 0x00)
 //   SPIS RX [timeoutMs]          -> OK SPIS RX <số bit> <hex các byte master đã gửi> (ERR nếu giao dịch chưa xong)
+//   SNIFF <sck> <mosi> <cs> [timeoutMs] [idleUs] -> OK SNIFF <số khung> <hex khung 1> ... gap=<ns lượt lấy mẫu chậm nhất>
+//                                   nghe lén SPI Mode 0 (thụ động, SCK tới ~750kHz), chờ CS xuống tối đa 100ms,
+//                                   dừng khi CS nghỉ HIGH quá idleUs (mặc định 5000);
+//                                   khung lẻ bit ghi thêm ":<số bit>"
 //   IRTX <ch> <NEC|SAMSUNG|SONY|TCL> <hex> [khung] -> phát khung IR đã giải điều chế như mắt thu (rảnh HIGH, Mark = LOW),
 //                                   bit 0 của byte đầu phát trước; khung > 1: NEC thêm mã lặp, SAMSUNG/SONY lặp nguyên khung
 //   IRCAP <ch> [timeoutMs] [gapUs] -> OK IRCAP <net> <Hz sóng mang> <duty %> <n> <mark> <space> <mark>... (us),
@@ -362,6 +366,33 @@ static void cmdSpiSlave(const String* w)
     }
 }
 
+static void cmdSpiSniff(const String* w)
+{
+    int ch[3];
+    for (uint8_t i = 0; i < 3; i++)
+    {
+        ch[i] = channelArg(w[1 + i]);
+        if (ch[i] < 0) return;
+    }
+    static uint8_t bytes[BENCH_SNIFF_MAX_BYTES];
+    static uint16_t frameBits[BENCH_SNIFF_MAX_FRAMES];
+    uint32_t maxGapNs = 0;
+    const uint8_t frames = benchSpiSniff(BENCH_CHANNELS[ch[0]].gpio, BENCH_CHANNELS[ch[1]].gpio, BENCH_CHANNELS[ch[2]].gpio,
+                                         w[4].length() ? w[4].toInt() : 100, w[5].length() ? w[5].toInt() : 5000,
+                                         bytes, frameBits, maxGapNs);
+    Serial.printf("OK SNIFF %u", frames);
+    uint16_t offset = 0;
+    for (uint8_t f = 0; f < frames; f++)
+    {
+        const uint16_t n = (frameBits[f] + 7) / 8;
+        Serial.print(' ');
+        printHex(bytes + offset, n);
+        if (frameBits[f] % 8) Serial.printf(":%u", frameBits[f]);
+        offset += n;
+    }
+    Serial.printf(" gap=%lu\n", (unsigned long)maxGapNs);
+}
+
 // ============================================================================
 // HỒNG NGOẠI
 // ============================================================================
@@ -432,6 +463,7 @@ static void handleLine(String line)
     else if (cmd == "INTERVAL") cmdInterval(w[1], w[2]);
     else if (cmd == "I2CS") cmdI2cSlave(w[1], w[2], w[3]);
     else if (cmd == "SPIS") cmdSpiSlave(w);
+    else if (cmd == "SNIFF") cmdSpiSniff(w);
     else if (cmd == "IRTX") cmdIrSend(w[1], w[2], w[3], w[4]);
     else if (cmd == "IRCAP") cmdIrCapture(w[1], w[2], w[3]);
     else Serial.printf("ERR unknown command '%s'\n", w[0].c_str());

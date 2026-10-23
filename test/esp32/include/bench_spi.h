@@ -45,4 +45,22 @@ bool benchSpiLoad(const uint8_t* data, size_t length);
  */
 int benchSpiTakeReceived(uint8_t* buffer, uint16_t maxLength, uint32_t timeoutMs, uint32_t& bits);
 
+/** @brief Giới hạn của benchSpiSniff(): tổng số byte và số khung CS. */
+static const uint16_t BENCH_SNIFF_MAX_BYTES = 512;
+static const uint8_t BENCH_SNIFF_MAX_FRAMES = 64;
+
+/**
+ * @brief Nghe lén SPI Mode 0 (thụ động, chỉ đọc chân): ghi lại byte MOSI của từng khung CS (CS xuống -> lên).
+ * @details Thăm dò thanh ghi GPIO khi khóa ngắt (vòng lặp trong IRAM). Không cần nạp trước như SPI slave nên
+ *          bắt được nhiều khung liền nhau. Cả 3 chân < GPIO32 thì mỗi lượt chỉ đọc 1 thanh ghi (nhanh nhất).
+ *          Dừng khi CS nghỉ HIGH quá idleUs.
+ * @param frameBits Nhận số bit của từng khung; byte các khung nối tiếp nhau trong bytes.
+ * @param timeoutMs Chờ CS xuống lần đầu tối đa (giới hạn 100ms: chờ cũng khóa ngắt để không lỡ bit đầu).
+ * @param maxGapNs Nhận khoảng hở lớn nhất giữa 2 lần lấy mẫu sau khi CS xuống (ns). Lớn hơn nửa chu kỳ SCK
+ *                 nghĩa là có thể đã lỡ sườn (core 1 bị core 0 dừng tạm qua ngắt mức cao, không khóa được).
+ * @return Số khung đã bắt.
+ */
+uint8_t benchSpiSniff(uint8_t sckGpio, uint8_t mosiGpio, uint8_t csGpio, uint32_t timeoutMs, uint32_t idleUs,
+                      uint8_t* bytes, uint16_t* frameBits, uint32_t& maxGapNs);
+
 #endif // BENCH_SPI_H

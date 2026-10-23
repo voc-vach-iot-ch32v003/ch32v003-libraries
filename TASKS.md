@@ -19,7 +19,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 ## Việc chung cho MỌI thư viện (checklist template)
 
-- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>" }` (còn max7219, led_matrix, bmi160 dùng mảng chuỗi URL; i2c, spi, power, ir đã chuyển).
+- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>" }` (còn led_matrix, bmi160 dùng mảng chuỗi URL; i2c, spi, power, ir, max7219 đã chuyển).
 - [ ] `README.md` khớp API mới (8 mục theo `embedded-library-docs-core.md`).
 - [ ] Examples: chỉ driver/ngoại vi mới cần (đề xuất danh sách → chờ duyệt → tạo).
 - [ ] Bộ test HIL trong `test/ch32v003/src/<lib>/` + kịch bản ESP32.
@@ -133,6 +133,8 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
   - Bài học: phương pháp nạp tụ bị điện dung VDD–VSS của chip (tụ lọc 100nF trên mạch thật) làm đọc thấp → máy chính thức cần tụ đo ≥ 10µF hoặc đo 2 tụ để khử; đo áp trên trở không bị ảnh hưởng.
   - Cần trở 10kΩ kéo PC3 lên 3V3 để 8050 dẫn khi A4M6 khởi động (nếu không chip được đo bị reset theo).
   - Hoãn: làm máy đo chính thức khi viết thư viện tiết kiệm pin cho MCU khác (cần thư viện OPA + UART).
+  - Thiết kế đã bàn (2026-10-23): tụ film 105 (dải ~0.1µA–4mA, 3.87mA sai ~1% thay vì ~5% với 104) + tụ 106 chuyển bằng AO3400 (đo 2 tụ khử tụ lọc của mạch được đo); hoặc 3 tụ 104/105/106 tự đổi thang + giải hệ `t = (C + Cx)·V/I + t0` ra cả I, Cx, t0. Hiệu chuẩn 2 điểm (197.8kΩ + ~1–2kΩ) để bù độ trễ cố định t0; dòng chuẩn tính theo áp trung bình `(V − V_ngưỡng/2)/R`. Mốc bỏ cuộc ~2s, xả ~200µs.
+  - Phương án thay thế: module INA226 (shunt R100 = 0.1Ω phải thay) với shunt 10Ω: bước 0.25µA, tối đa 8.2mA, áp sụt ≤ 40mV, không cần đổi thang cho CH32V003; cần hiệu chuẩn điểm 0 (offset ±10µV).
 
 ### `ch32v003_ir` — ✅ v2.0.0 (HIL 27/27 × 3 chip)
 - ✅ ⚠️ **Breaking (đã duyệt):** NEC/Samsung trả `address`/`command` 8 bit khi byte đảo hợp lệ (16 bit nếu NEC mở rộng), Sony command 7 bit + address 5 bit; `irSend` nhận đúng quy ước đó → thu–phát đối xứng. `IR_RawData_t` dạng nén (bảng ≤ 16 độ dài + 4 bit/sườn, đọc bằng `irRawGetDuration()`), `rawLen` → `uint16_t`, bỏ `rawBuf[]`.
@@ -145,12 +147,13 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 ## Tầng 2
 
-### `ch32v003_max7219`
+### `ch32v003_max7219` — ✅ v2.0.0 (HIL: F4P6 28/28 hw + sw, A4M6 14/14, J4M6 14/14)
 - ✅ ⚠️ **Breaking:** `Max7219_t → MAX7219_DriverHandle_t { spiHandle, csPin, cascadeCount }`, `max7219Init(&dev)` trả `uint8_t`, `max7219WriteReg → max7219WriteRegister`.
-- ✅ Thêm `max7219WriteChain()` (mỗi IC 1 dữ liệu riêng trong 1 khung CS).
-- ✅ Bật hiển thị SAU khi xóa (không chớp rác lúc khởi động). Bỏ include `sys_config.h` thừa.
-- ⬜ README + library.json.
-- 🧪 HIL: ESP32 SPI slave bắt khung 16-bit × N, kiểm tra thứ tự Daisy Chain.
+- ✅ Thêm `max7219WriteChain()` (mỗi IC 1 dữ liệu riêng trong 1 khung CS), hằng Code B (`MAX7219_DECODE_ALL`, `MAX7219_CODE_B_*`, `MAX7219_DECIMAL_POINT`).
+- ✅ Bật hiển thị SAU khi xóa (không chớp rác lúc khởi động). Gửi cặp byte bằng `spiWrite` (SPI phần cứng không chờ nhận từng byte).
+- ✅ README (Quick Start qua `check_readme.py`), `library.json` (dependencies dạng object), 2 ví dụ (`01_matrix_pattern`, `02_seven_segment_counter`).
+- ✅ HIL (`suites/max7219.py`): ESP32 nghe lén SPI (`SNIFF`, CS = PC2) so từng khung CS với khung dựng theo datasheet (chuỗi 3 IC). SPI mềm test với clock lõi /8 (xung SCK 48MHz ~200ns ngắn hơn 1 lượt đọc GPIO của ESP32). Lần bắt có `gap` > 600ns → chip làm lại thao tác (core 1 ESP32 bị core 0 dừng tạm bằng ngắt mức cao, `portDISABLE_INTERRUPTS` không chặn được; đo được 4–25µs, luôn ở lần bắt đầu tiên của cấu hình hw).
+- ⚠️ `led_matrix` trên GitHub (v1) kéo max7219 mới nhất → hỏng biên dịch cho tới khi phát hành led_matrix v2.
 
 ### `ch32v003_bmi160`
 - ⬜ **Bug:** `BMI160_GYRO_RANGE_DEFAULT = 0` trùng `BMI160_GYRO_RANGE_2000_DPS = 0x00` → chọn 2000 dps thực tế chạy 250 dps (sand-glass đang dính).

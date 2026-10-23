@@ -1,5 +1,6 @@
 #include "bench_spi.h"
 #include <driver/spi_slave.h>
+#include <soc/gpio_struct.h>
 
 static const spi_host_device_t HOST = HSPI_HOST;
 
@@ -80,4 +81,104 @@ int benchSpiTakeReceived(uint8_t* buffer, const uint16_t maxLength, const uint32
     const uint16_t bytes = min<uint32_t>(bits / 8, maxLength);
     memcpy(buffer, rxBuffer, bytes);
     return bytes;
+}
+
+// ============================================================================
+// NGHE LÉN SPI (THỤ ĐỘNG)
+// ============================================================================
+
+static inline uint32_t readPin(const uint8_t gpio)
+{
+    return gpio < 32 ? (GPIO.in >> gpio) & 1 : (GPIO.in1.data >> (gpio - 32)) & 1;
+}
+
+// Đọc mức 3 chân trong 1 lượt: WIDE = có chân >= GPIO32 (đọc thêm thanh ghi in1, chậm hơn).
+// Bit 0 = SCK, bit 1 = MOSI, bit 2 = CS.
+template <bool WIDE>
+static inline uint32_t IRAM_ATTR sniffSample(const uint8_t sck, const uint8_t mosi, const uint8_t cs)
+{
+    if (!WIDE)
+    {
+        const uint32_t v = GPIO.in;
+        return ((v >> sck) & 1) | (((v >> mosi) & 1) << 1) | (((v >> cs) & 1) << 2);
+    }
+    const uint64_t v = GPIO.in | ((uint64_t)GPIO.in1.data << 32);
+    return ((v >> sck) & 1) | (((v >> mosi) & 1) << 1) | (((v >> cs) & 1) << 2);
+}
+
+// Vòng thăm dò đặt trong IRAM: không bị khựng vì cache Flash trong lúc khóa ngắt.
+// Chờ CS xuống cũng nằm trong vòng này (đã khóa ngắt) để không lỡ các bit đầu khung.
+template <bool WIDE>
+static uint8_t IRAM_ATTR sniffLoop(const uint8_t sck, const uint8_t mosi, const uint8_t cs, const uint32_t waitCycles,
+                                   const uint32_t idleCycles, const uint32_t limitCycles, uint8_t* bytes,
+                                   uint16_t* frameBits, uint32_t& maxGapCycles)
+{
+    const uint32_t waitStart = xthal_get_ccount();
+    while (sniffSample<WIDE>(sck, mosi, cs) & 4)
+    {
+        if (xthal_get_ccount() - waitStart > waitCycles) return 0;
+    }
+
+    uint8_t frames = 0;
+    uint16_t totalBits = 0, bitsInFrame = 0;
+    uint32_t last = 0; // CS đang LOW, SCK LOW
+    uint32_t csHighSince = 0;
+    const uint32_t start = xthal_get_ccount();
+    uint32_t previous = start;
+    maxGapCycles = 0;
+    while (frames < BENCH_SNIFF_MAX_FRAMES)
+    {
+        const uint32_t now = sniffSample<WIDE>(sck, mosi, cs);
+        const uint32_t t = xthal_get_ccount();
+        if (t - previous > maxGapCycles) maxGapCycles = t - previous; // Lượt lấy mẫu bị chậm (CPU bị dừng tạm)
+        previous = t;
+        if (!(now & 4))
+        {
+            if (last & 4) bitsInFrame = 0; // CS vừa xuống: khung mới
+            if ((now & 1) && !(last & 1) && totalBits < BENCH_SNIFF_MAX_BYTES * 8)
+            {
+                // Mode 0: dữ liệu hợp lệ ở sườn lên SCK, bit cao trước
+                uint8_t& b = bytes[totalBits >> 3];
+                if ((totalBits & 7) == 0) b = 0;
+                b |= ((now >> 1) & 1) << (7 - (totalBits & 7));
+                totalBits++;
+                bitsInFrame++;
+            }
+        }
+        else if (!(last & 4))
+        {
+            frameBits[frames++] = bitsInFrame; // CS lên: kết thúc khung
+            totalBits = (totalBits + 7) & ~7; // Khung sau bắt đầu ở byte mới
+            csHighSince = t;
+        }
+        else if (t - csHighSince > idleCycles)
+        {
+            break;
+        }
+        last = now;
+        if (t - start > limitCycles) break;
+    }
+    return frames;
+}
+
+uint8_t benchSpiSniff(const uint8_t sckGpio, const uint8_t mosiGpio, const uint8_t csGpio, const uint32_t timeoutMs,
+                      const uint32_t idleUs, uint8_t* bytes, uint16_t* frameBits, uint32_t& maxGapNs)
+{
+    pinMode(sckGpio, INPUT);
+    pinMode(mosiGpio, INPUT);
+    pinMode(csGpio, INPUT);
+
+    // Khóa ngắt suốt lúc chờ + bắt: tổng <= 200ms (watchdog ngắt ~300ms)
+    const uint32_t cyclesPerUs = ESP.getCpuFreqMHz();
+    const uint32_t waitCycles = (timeoutMs > 100 ? 100 : timeoutMs) * 1000 * cyclesPerUs;
+    const uint32_t limitCycles = 100000 * cyclesPerUs;
+    const bool wide = sckGpio >= 32 || mosiGpio >= 32 || csGpio >= 32;
+    uint32_t maxGapCycles = 0;
+    portDISABLE_INTERRUPTS();
+    const uint8_t frames =
+        wide ? sniffLoop<true>(sckGpio, mosiGpio, csGpio, waitCycles, idleUs * cyclesPerUs, limitCycles, bytes, frameBits, maxGapCycles)
+             : sniffLoop<false>(sckGpio, mosiGpio, csGpio, waitCycles, idleUs * cyclesPerUs, limitCycles, bytes, frameBits, maxGapCycles);
+    portENABLE_INTERRUPTS();
+    maxGapNs = maxGapCycles * 1000 / cyclesPerUs;
+    return frames;
 }
