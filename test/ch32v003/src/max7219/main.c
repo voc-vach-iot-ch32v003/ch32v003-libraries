@@ -1,6 +1,6 @@
 #include "ch32fun.h"
 #include "ch32v003_max7219.h"
-#include "hil.h"
+#include "sniff.h"
 
 // Test HIL cho ch32v003_max7219: chuỗi 3 IC giả định, ESP32 nghe lén SPI (SNIFF) và so từng khung CS.
 // - Phần cứng SPI1 (chỉ F4P6): SCK = PC5, MOSI = PC6 (chia 64 = 750kHz để bộ nghe lén theo kịp).
@@ -8,9 +8,8 @@
 //   của ESP32, nên lúc gọi hàm max7219 hạ clock lõi xuống /8 (xung ~1.6us). Test kiểm tra logic khung; tốc độ
 //   bit-bang đã có suite spi kiểm tra.
 // CS = PC2 cho cả 2 (có trên cả 3 gói vỏ): 3 chân nằm cùng thanh ghi GPIO.in của ESP32 nên bộ nghe lén đọc 1 lần / lượt.
-// Bước "sniff <tag> <case>": runner bật SNIFF, trả lời, chip thực hiện thao tác; bước "verify <tag> <case>": runner
-// so với khung mong đợi rồi trả "ok", hoặc "retry" nếu lần bắt không đáng tin (ESP32 bị dừng tạm giữa chừng) để chip
-// làm lại thao tác (mọi thao tác chỉ ghi thanh ghi nên làm lại không đổi kết quả).
+// Mỗi thao tác đo bằng SNIFFED() (sniff.h): làm lại nếu runner báo lần bắt không đáng tin; mọi thao tác chỉ ghi
+// thanh ghi nên làm lại không đổi kết quả.
 
 #define PIN_A(n) ((MCU_PORT_INDEX_A << 4) | (n))
 #define PIN_C(n) ((MCU_PORT_INDEX_C << 4) | (n))
@@ -33,34 +32,9 @@ static TestConfiguration_t configurations[] = {
 static char text[40];
 static char name[32];
 
-static uint8_t slowClock; // 1 = hạ clock lõi trong lúc gọi hàm max7219 (cấu hình phần mềm)
-
-static void sniff(const char* tag, const char* testCase)
-{
-    mini_snprintf(text, sizeof(text), "sniff %s %s", tag, testCase);
-    hilWait(text);
-    if (slowClock) RCC->CFGR0 = (RCC->CFGR0 & ~RCC_HPRE) | RCC_HPRE_DIV8;
-}
-
-// Gọi sau mỗi thao tác được nghe lén: trả clock về 48MHz trước khi in qua SWIO, hỏi runner có cần làm lại không
-static uint8_t done(const char* tag, const char* testCase)
-{
-    RCC->CFGR0 = (RCC->CFGR0 & ~RCC_HPRE) | RCC_HPRE_DIV1;
-    mini_snprintf(text, sizeof(text), "verify %s %s", tag, testCase);
-    return hilWait(text)[0] == 'o';
-}
-
-// Nghe lén một thao tác, làm lại tới khi runner bắt được trọn vẹn
-#define SNIFFED(tag, testCase, statement) \
-    do                                    \
-    {                                     \
-        sniff(tag, testCase);             \
-        statement;                        \
-    } while (!done(tag, testCase))
-
 static void testConfiguration(TestConfiguration_t* cfg)
 {
-    slowClock = (cfg->bus.driverMode == SPI_MODE_SOFTWARE);
+    sniffSlowClock = (cfg->bus.driverMode == SPI_MODE_SOFTWARE);
     mini_snprintf(text, sizeof(text), "setup %s", cfg->tag);
     hilWait(text);
     mini_snprintf(name, sizeof(name), "spi_init_%s", cfg->tag);

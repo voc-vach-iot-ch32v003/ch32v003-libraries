@@ -19,7 +19,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 ## Việc chung cho MỌI thư viện (checklist template)
 
-- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>#v<x.y.z>" }`, **ghim tag phát hành ổn định gần nhất** (cả `lib_deps` của ví dụ). Đã xong: i2c 1.1.1, spi 2.0.1, power 2.0.5, ir 2.0.1, max7219 2.0.1 (bản vá chỉ ghim deps, 2026-10-23). Còn: led_matrix, bmi160.
+- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>#v<x.y.z>" }`, **ghim tag phát hành ổn định gần nhất** (cả `lib_deps` của ví dụ). Đã xong: i2c 1.1.1, spi 2.0.1, power 2.0.5, ir 2.0.1, max7219 2.0.1 (bản vá chỉ ghim deps, 2026-10-23). led_matrix 2.0.0. Còn: bmi160.
 - [ ] `README.md` khớp API mới (8 mục theo `embedded-library-docs-core.md`).
 - [ ] Examples: chỉ driver/ngoại vi mới cần (đề xuất danh sách → chờ duyệt → tạo).
 - [ ] Bộ test HIL trong `test/ch32v003/src/<lib>/` + kịch bản ESP32.
@@ -153,7 +153,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ Bật hiển thị SAU khi xóa (không chớp rác lúc khởi động). Gửi cặp byte bằng `spiWrite` (SPI phần cứng không chờ nhận từng byte).
 - ✅ README (Quick Start qua `check_readme.py`), `library.json` (dependencies dạng object), 2 ví dụ (`01_matrix_pattern`, `02_seven_segment_counter`).
 - ✅ HIL (`suites/max7219.py`): ESP32 nghe lén SPI (`SNIFF`, CS = PC2) so từng khung CS với khung dựng theo datasheet (chuỗi 3 IC). SPI mềm test với clock lõi /8 (xung SCK 48MHz ~200ns ngắn hơn 1 lượt đọc GPIO của ESP32). Lần bắt có `gap` > 600ns → chip làm lại thao tác (core 1 ESP32 bị core 0 dừng tạm bằng ngắt mức cao, `portDISABLE_INTERRUPTS` không chặn được; đo được 4–25µs, luôn ở lần bắt đầu tiên của cấu hình hw).
-- ⚠️ `led_matrix` trên GitHub (v1) kéo max7219 mới nhất → hỏng biên dịch cho tới khi phát hành led_matrix v2.
+- ✅ `led_matrix` v1 (kéo max7219 / spi mới nhất) hỏng biên dịch → đã thay bằng led_matrix v2.0.0.
 
 ### `ch32v003_bmi160`
 - ⬜ **Bug:** `BMI160_GYRO_RANGE_DEFAULT = 0` trùng `BMI160_GYRO_RANGE_2000_DPS = 0x00` → chọn 2000 dps thực tế chạy 250 dps (sand-glass đang dính).
@@ -166,15 +166,14 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 ## Tầng 3
 
-### `ch32v003_led_matrix`
+### `ch32v003_led_matrix` — ✅ v2.0.0 (HIL: F4P6 34/34 hw + sw, A4M6 17/17, J4M6 17/17)
 - ✅ **Tối ưu:** `ledMatrixUpdate` gửi N² khung → 8 khung (1 khung/hàng cho cả chuỗi).
 - ✅ **Bug:** xoay 90/270 với > 1 module ghi tràn Frame Buffer. → Xoay từng module tại chỗ; 180 vẫn lật cả dải.
 - ✅ **Bug:** trạng thái cuộn chữ là biến `static` → 2 màn hình dùng chung. → Đưa vào Handle; cài đặt cuộn UP/DOWN (trước đây khai báo nhưng không chạy).
 - ✅ **Bug font:** `n`, `[`, `]`, `~` sai glyph.
 - ✅ ⚠️ **Breaking:** `LedMatrix_t → LED_MATRIX_DriverHandle_t`, `MatrixRotation_t → LED_MATRIX_Rotation_t` (`LED_MATRIX_ROTATE_*`), `MatrixScrollDirection_t → LED_MATRIX_ScrollDirection_t` (`LED_MATRIX_SCROLL_*`), `ledMatrixInit(dev, spiHandle, csPin, buffer, count)`.
-- ⬜ README + library.json.
-- 🧪 HIL: bắt khung SPI, đối chiếu Frame Buffer.
-- ⬜ **Sai chân trong README:** `CS_PIN MCU_PIN7` = **VSS** trên F4P6, PD1/SWIO trên A4M6.
+- ✅ `_defs.h` (`LED_MATRIX_MODULE_SIZE`, `LED_MATRIX_CHAR_WIDTH`), README (Quick Start qua `check_readme.py`), `library.json` ghim max7219/spi/gpio `v2.0.1`, 2 ví dụ (`01_scroll_text`, `02_graphics_rotation`); chân ví dụ CS `MCU_PIN3` / CLK `MCU_PIN5` / DIN `MCU_PIN6` (thay `MCU_PIN7` = VSS trên F4P6).
+- ✅ HIL (`suites/led_matrix.py`, chuỗi 2 module): so 8 khung của `ledMatrixUpdate` với Frame Buffer dựng bằng mô hình Python độc lập (vẽ điểm / đường / chữ, 4 góc xoay, 4 hướng cuộn, độ sáng); trên chip: từ chối tham số sai, điểm ngoài màn hình không ghi tràn, 2 màn hình cuộn độc lập. Dùng chung `runner/spi_sniff.py` + `ch32v003/include/sniff.h` với suite max7219.
 
 ---
 
