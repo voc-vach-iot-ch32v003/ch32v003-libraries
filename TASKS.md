@@ -19,7 +19,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 ## Việc chung cho MỌI thư viện (checklist template)
 
-- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>" }` (còn led_matrix, bmi160 dùng mảng chuỗi URL; i2c, spi, power, ir, max7219 đã chuyển).
+- [ ] `library.json`: `dependencies` theo dạng object `{ "name", "version": "<git url>#v<x.y.z>" }`, **ghim tag phát hành ổn định gần nhất** (cả `lib_deps` của ví dụ). Đã xong: i2c 1.1.1, spi 2.0.1, power 2.0.5, ir 2.0.1, max7219 2.0.1 (bản vá chỉ ghim deps, 2026-10-23). Còn: led_matrix, bmi160.
 - [ ] `README.md` khớp API mới (8 mục theo `embedded-library-docs-core.md`).
 - [ ] Examples: chỉ driver/ngoại vi mới cần (đề xuất danh sách → chờ duyệt → tạo).
 - [ ] Bộ test HIL trong `test/ch32v003/src/<lib>/` + kịch bản ESP32.
@@ -136,7 +136,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
   - Thiết kế đã bàn (2026-10-23): tụ film 105 (dải ~0.1µA–4mA, 3.87mA sai ~1% thay vì ~5% với 104) + tụ 106 chuyển bằng AO3400 (đo 2 tụ khử tụ lọc của mạch được đo); hoặc 3 tụ 104/105/106 tự đổi thang + giải hệ `t = (C + Cx)·V/I + t0` ra cả I, Cx, t0. Hiệu chuẩn 2 điểm (197.8kΩ + ~1–2kΩ) để bù độ trễ cố định t0; dòng chuẩn tính theo áp trung bình `(V − V_ngưỡng/2)/R`. Mốc bỏ cuộc ~2s, xả ~200µs.
   - Phương án thay thế: module INA226 (shunt R100 = 0.1Ω phải thay) với shunt 10Ω: bước 0.25µA, tối đa 8.2mA, áp sụt ≤ 40mV, không cần đổi thang cho CH32V003; cần hiệu chuẩn điểm 0 (offset ±10µV).
 
-### `ch32v003_ir` — ✅ v2.0.0 (HIL 27/27 × 3 chip)
+### `ch32v003_ir` — ✅ v2.0.1 (v2.0.0 + ghim deps; HIL 27/27 × 3 chip)
 - ✅ ⚠️ **Breaking (đã duyệt):** NEC/Samsung trả `address`/`command` 8 bit khi byte đảo hợp lệ (16 bit nếu NEC mở rộng), Sony command 7 bit + address 5 bit; `irSend` nhận đúng quy ước đó → thu–phát đối xứng. `IR_RawData_t` dạng nén (bảng ≤ 16 độ dài + 4 bit/sườn, đọc bằng `irRawGetDuration()`), `rawLen` → `uint16_t`, bỏ `rawBuf[]`.
 - ✅ Học lệnh điều hòa: `IR_RAW_BUFFER_SIZE` 512 sườn (~290B, bản cũ 256 sườn = 514B), `IR_RAW_TIMEOUT_US` 50ms gom các khung nối nhau; `irRead` giữ `IR_TIMEOUT_US` 15ms (giữ nút Sony vẫn nhận từng khung; NEC khung → mã lặp nghỉ đúng 40.02ms nên tránh mốc 40ms).
 - ✅ Thêm `irDecodeRaw()`, `irRawGetDuration()`, `irSendData()`, `irSendRawCode()` (+ bản Port), kiểu `IR_RawCode_t` (lệnh trong Flash); `irAnalyzeRaw()` in câu khởi tạo C, tự nhận cách mã hóa (Distance/Width).
@@ -147,7 +147,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 
 ## Tầng 2
 
-### `ch32v003_max7219` — ✅ v2.0.0 (HIL: F4P6 28/28 hw + sw, A4M6 14/14, J4M6 14/14)
+### `ch32v003_max7219` — ✅ v2.0.1 (v2.0.0 + ghim deps; HIL: F4P6 28/28 hw + sw, A4M6 14/14, J4M6 14/14)
 - ✅ ⚠️ **Breaking:** `Max7219_t → MAX7219_DriverHandle_t { spiHandle, csPin, cascadeCount }`, `max7219Init(&dev)` trả `uint8_t`, `max7219WriteReg → max7219WriteRegister`.
 - ✅ Thêm `max7219WriteChain()` (mỗi IC 1 dữ liệu riêng trong 1 khung CS), hằng Code B (`MAX7219_DECODE_ALL`, `MAX7219_CODE_B_*`, `MAX7219_DECIMAL_POINT`).
 - ✅ Bật hiển thị SAU khi xóa (không chớp rác lúc khởi động). Gửi cặp byte bằng `spiWrite` (SPI phần cứng không chờ nhận từng byte).

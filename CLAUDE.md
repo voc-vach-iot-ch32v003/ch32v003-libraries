@@ -18,7 +18,8 @@ Template nằm ở `../template/` (đọc `embedded-library-router.md` để ch�
 
 Tóm tắt những điểm hay sai:
 
-- **Cấu trúc**: mã nguồn trong `src/` (`<lib>.h`, `<lib>.c`, `<lib>_types.h`, `<lib>_defs.h`), `library.json` có `dependencies` dạng **object** `{ "name": ..., "version": "<git url>" }`.
+- **Cấu trúc**: mã nguồn trong `src/` (`<lib>.h`, `<lib>.c`, `<lib>_types.h`, `<lib>_defs.h`), `library.json` có `dependencies` dạng **object** `{ "name": ..., "version": "<git url>#v<x.y.z>" }`.
+- **Ghim phiên bản phụ thuộc**: mọi phụ thuộc (trong `library.json` và `lib_deps` của `examples/*/platformio.ini`) trỏ tới **tag phát hành ổn định gần nhất** (`...ch32v003_gpio.git#v2.0.1`), không trỏ nhánh mới nhất, để thư viện tầng dưới ra bản phá vỡ tương thích không làm hỏng thư viện tầng trên. Ví dụ ghim chính thư viện của nó theo tag đang phát hành. Khi phát hành thư viện tầng dưới, xem lại thư viện tầng trên có nên nâng tag phụ thuộc không.
 - **Doxygen**: chỉ ở file `.h` (`@file`, `@author Vọc Vạch IoT`, `@brief`); **không** `@version` / `@date`; **không** khối header ở đầu `.c`. Mọi hàm/enum/struct/trường public có doc tiếng Việt.
 - **Đặt tên**: type `<MODULE>_<FullPascalCase>_t` (không viết tắt: `Configuration`, `DriverHandle`), hàm `moduleVerb()` camelCase, macro `UPPER_SNAKE`. **Ngoại lệ có chủ đích**: `gpio`, `delay`, `timer` giữ tên hàm kiểu Arduino (`pinMode`, `delayMs`, `millis`...).
 - **Handle pattern**: driver nhận con trỏ handle (`I2C_DriverHandle_t`, `SPI_DriverHandle_t`...), không dùng biến `static` toàn cục cho trạng thái thiết bị (phải hỗ trợ nhiều thiết bị).
