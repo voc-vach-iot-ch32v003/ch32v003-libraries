@@ -9,6 +9,7 @@
 #include "ch32v003_max7219.h"
 #include "ch32v003_led_matrix.h"
 #include "ch32v003_bmi160.h"
+#include "ch32v003_ina226.h"
 #include "ch32v003_ir.h"
 #include "ch32v003_power.h"
 #include "ch32v003_ws2812.h"

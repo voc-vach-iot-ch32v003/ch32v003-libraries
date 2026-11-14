@@ -16,6 +16,7 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 | 1 | `ws2812` | gpio |
 | 2 | `max7219` | spi |
 | 2 | `bmi160` | i2c, intmath, delay, debug |
+| 2 | `ina226` | i2c, delay, debug |
 | 3 | `led_matrix` | max7219 |
 
 ## Việc chung cho MỌI thư viện (checklist template)
@@ -170,6 +171,15 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ README (Quick Start qua `check_readme.py`), `library.json` ghim i2c `v1.1.1`, intmath `v1.0.1`, delay / debug `v1.0.0`; 2 ví dụ (`01_tilt_angles` đo `deltaTime` bằng `millis()`, `02_gravity_vector`).
 - ✅ HIL (`suites/bmi160.py`): ESP32 I2C slave 0x69 giả lập thanh ghi; firmware link `-Wl,--wrap=i2cReadBurst` (env tắt LTO) để báo runner nạp byte ngay trước từng lần đọc. So chuỗi ghi cấu hình (dải 2000 dps = 0x00), sai Chip ID / PMU / NACK, thời gian chờ khởi động, đọc 12 byte, hiệu chuẩn (+ rung, + đổi trục); trên chip: góc gia tốc, Tau ở dt 5/10/100ms, tích phân con quay 2 dải, đổi trục, vector 2D độc lập giữa 2 cảm biến.
 - ℹ️ Bàn test 2026-10-23: 2 trở kéo lên I2C bị rời (sau thí nghiệm máy đo tụ) → suite i2c lỗi toàn bộ; đã cắm lại. Kiểm tra nhanh: `MODE PC1 PD` rồi `R PC1` phải đọc 1.
+
+
+### `ch32v003_ina226` — ✅ v1.0.0 (2026-11-14, HIL 56/56 đạt 3 chip)
+
+- ✅ Thư viện mới từ bản nháp `iot/ch32v003/ina226`: Handle `INA226_DriverHandle_t`, enum `DEFAULT = 0` (giá trị = mã thanh ghi + 1), mọi hàm trả `bool` và kiểm tra lỗi I2C.
+- ✅ Calibration không chia 64-bit lúc đọc: `currentLsbNa = ceil(maxCurrentUa*1000/32768)`, `CAL = 5.12e12 / (lsbNa * uOhm)` chỉ tính ở `ina226Init()`; dòng tối đa 2A.
+- ✅ Alert (SOL/SUL/BOL/BUL/POL/CNVR), đổi đơn vị -> ngưỡng thô, cờ AFF/CVRF/OVF; ví dụ `01_basic_measure`, `02_alert`; README, smoke build, `check_readme.py ina226` ĐẠT.
+- ✅ HIL `suites/ina226.py` + `src/ina226/main.c` (ESP32 I2C slave 0x40, wrap `i2cReadBurst`): đã viết, build 3 chip OK; **chưa chạy được** (bàn test đang đổi dây/pin ESP32). Chạy: `$PY test/runner/hil.py ina226`.
+- ✅ Phát hành v1.0.0: https://github.com/voc-vach-iot-ch32v003/ch32v003_ina226/releases/tag/v1.0.0, submodule đã thêm.
 
 ### `ch32v003_ws2812` — ✅ v1.0.0 (thư viện mới; HIL: F4P6 46/46, A4M6 46/46, J4M6 24/24)
 - ✅ Thiết kế (người dùng chọn 2026-10-23): bit-bang + SPI DMA, LED RGB có chọn thứ tự màu, độ sáng toàn dải. Repo `voc-vach-iot-ch32v003/ch32v003_ws2812` (public).
