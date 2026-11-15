@@ -13,6 +13,7 @@
 #include "ch32v003_ir.h"
 #include "ch32v003_power.h"
 #include "ch32v003_ws2812.h"
+#include "ch32v003_tft.h"
 
 int main(void)
 {

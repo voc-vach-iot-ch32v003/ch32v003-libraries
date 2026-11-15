@@ -190,6 +190,15 @@ Quy ước trạng thái: ✅ xong (đã build 3 chip J4M6/A4M6/F4P6) · 🔧 đ
 - ✅ HIL (`suites/ws2812.py`): ESP32 lệnh mới `WSCAP` (RMT 12.5ns) giải mã khung + đo độ rộng xung; so byte với mô hình Python (3 thứ tự màu, độ sáng 128 / 0, fill, 2 khung liền nhau, dải 16 LED); trên chip: từ chối tham số sai, Set/Get không ghi tràn, thời lượng phát, DMA không chặn CPU, `millis()` vẫn đúng khi phát 100 LED.
 - ⬜ Để sau (người dùng chưa cần): đổi màu HSV / bánh xe màu, bảng gamma, hiệu ứng có sẵn (rainbow, chase, fade), LED RGBW (SK6812 RGBW).
 
+### `ch32v003_tft` — ✅ v1.0.0 (build 3 chip đạt, thử tay A4M6 đạt, chưa HIL)
+
+- ✅ Thư viện `ch32v003_tft` (submodule, Release v1.0.0 2026-11-16): TFT SPI ST7735 + ST7789, không framebuffer. Handle `TFT_DriverHandle_t`, bảng lệnh init `const` theo controller (`TFT_ENABLE_ST7735` / `ST7789`), xoay 4 hướng (ST7735 giữ offset, ST7789 tính theo RAM 240x320), cắt xén tọa độ.
+- ✅ API: `tftInit`, `tftSetRotation`, `tftInvertDisplay`, `tftDisplayOn/Off`, `tftGetWidth/Height`, `tftSetWindow`, `tftPushColors`, `tftPushColor`, `tftDrawPixel`, `tftFillScreen/FillRect/DrawHLine/DrawVLine`, `tftDrawLine/Rect/Circle/FillCircle`, `tftDrawChar/DrawString` (font 5x7 `const`, `scale`), `tftDrawBitmap1bit`, `tftDrawImage565`.
+- ✅ DMA chỉ cho `tftPushColor` (F4P6, SPI cứng): SPI1 16 bit + DMA1 kênh 3, MINC tắt, nguồn là `dev->dmaColor`, tối đa 65535 / lượt.
+- ✅ README (Quick Start qua `check_readme.py tft` ĐẠT 3 chip), `library.json` ghim spi / gpio `v2.0.1`, delay `v1.0.0`, 3 ví dụ (`01_basic`, `02_text`, `03_shapes`, SPI mềm), smoke build `test/ch32v003` sạch warning của thư viện.
+- ✅ Thử tay trên A4M6 + ST7735S 0.96" 80x160 (SPI mềm SCK PD5, MOSI PA1, DC PA2, CS nối GND): ĐẠT màu, offset (24 / 0, invert false, bgr true), 4 hướng xoay, chữ, hình. ST7735 giữ offset ở mọi hướng xoay. Suite HIL làm sau.
+- ⬜ Còn lại: suite HIL (màu/offset 4 hướng ST7735 + ST7789, SPI cứng + DMA trên F4P6, tốc độ SCK).
+
 ## Tầng 3
 
 ### `ch32v003_led_matrix` — ✅ v2.0.0 (HIL: F4P6 34/34 hw + sw, A4M6 17/17, J4M6 17/17)
